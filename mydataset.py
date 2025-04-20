@@ -1,4 +1,5 @@
 import json
+import jieba
 import os
 import pickle
 import torch
@@ -8,44 +9,50 @@ from tqdm import tqdm
 
 
 class MyDataset(Dataset):
-    def __init__(self, tokenizer, corpus_path: str, src_max_length: int, tgt_max_length: int, seq_max_length: int):
+    def __init__(
+        self, en_tokenizer, zh_tokenizer, corpus_path: str,
+        src_max_length: int, tgt_max_length: int, seq_max_length: int
+    ):
         """
-        - 分离源语言(src)和目标语言(tgt)
-        - 动态生成逐步解码的上下文
+        - seperate src and tgt language
+        - generate seq2seq data and pad
         """
-        self.tokenizer = tokenizer
+        self.en_tokenizer = en_tokenizer
+        self.zh_tokenizer = zh_tokenizer
         self.src_max_length = src_max_length
         self.tgt_max_length = tgt_max_length
         self.seq_max_length = seq_max_length
 
-        # 生成唯一缓存文件名（包含长度信息）
+        # generate cache name
         base_name = os.path.basename(corpus_path)
         cache_dir = os.path.dirname(corpus_path)
         cache_name = f"{base_name}_preprocessed_src{self.src_max_length}_tgt{self.tgt_max_length}.pkl"
         self.cache_path = os.path.join(cache_dir, cache_name)
         
-        # 加载或创建预处理数据
+        # create or load tokenized corpus cache file
         if os.path.exists(self.cache_path):
-            print(f"加载预处理缓存: {self.cache_path}")
+            print(f"loading cached data: {self.cache_path}")
             with open(self.cache_path, 'rb') as f:
                 self.processed_data = pickle.load(f)
         else:
-            print("创建预处理缓存，首次运行需要较长时间...")
+            print("creating cache when first loading the dataset, it will take some time...")
             with open(corpus_path, 'r', encoding='utf-8') as f:
                 raw_data = json.load(f)
 
             self.processed_data = []
-
+            jieba.enable_parallel(8)
+            print(jieba.lcut("这是一个结巴中文分词测试"))
+            print("jieba tokenizer test complete")
             for item in tqdm(
                 raw_data,
-                desc="预处理语料",
-                unit="样本",
+                desc="tokenizing sentences: ",
+                unit="pairs",
                 colour='green',
                 bar_format='{l_bar}{bar:32}{r_bar}',
                 dynamic_ncols=True
             ):
                 # 编码源语言（英语）
-                src_ids = tokenizer(
+                src_ids = en_tokenizer(
                     item['en'],
                     truncation=True,
                     max_length=self.src_max_length,
@@ -53,8 +60,9 @@ class MyDataset(Dataset):
                 ).input_ids
                 
                 # 编码目标语言（中文）
-                tgt_ids = tokenizer(
-                    item['zh'],
+                tgt = " ".join(jieba.lcut(item['zh']))
+                tgt_ids = zh_tokenizer(
+                    tgt,
                     truncation=True,
                     max_length=self.tgt_max_length,
                     add_special_tokens=True
@@ -72,11 +80,11 @@ class MyDataset(Dataset):
                     "tgt": tgt_ids,
                     "label": tgt_ids[1:],
                 })
-            
+
             # 保存预处理结果
             with open(self.cache_path, 'wb') as f:
                 pickle.dump(self.processed_data, f)
-            print(f"缓存已保存至: {self.cache_path}")
+            print(f"cache saved at: {self.cache_path}")
 
     def __len__(self):
         return len(self.processed_data)
@@ -109,21 +117,26 @@ def collate_fn(batch, pad_token_id: int, src_max_length: int, tgt_max_length: in
     }
 
 
-
 def main():
     from torch.utils.data import DataLoader
     from mytokenizer import load_tokenizer
     from functools import partial
-    tokenizer = load_tokenizer("model/tokenizers")
 
+    src_max_length = 48
+    tgt_max_length = 32
+    seq_max_length = 64
+
+    en_tokenizer = load_tokenizer("model/tokenizers", "en")
+    zh_tokenizer = load_tokenizer("model/tokenizers", "zh")
     # 创建数据集实例（使用示例参数）
     corpus_path = "data/corpus.json"
     dataset = MyDataset(
         corpus_path=corpus_path,
-        tokenizer=tokenizer,
-        src_max_length=48,
-        tgt_max_length=32,
-        seq_max_length=64,
+        en_tokenizer=en_tokenizer,
+        zh_tokenizer=zh_tokenizer,
+        src_max_length=src_max_length,
+        tgt_max_length=tgt_max_length,
+        seq_max_length=seq_max_length,
     )
     # 创建DataLoader
     dataloader = DataLoader(
@@ -132,18 +145,18 @@ def main():
         shuffle=True,
         collate_fn=partial(
             collate_fn,
-            pad_token_id=tokenizer.pad_token_id,
-            src_max_length=48,
-            tgt_max_length=32,
+            pad_token_id=zh_tokenizer.pad_token_id,
+            src_max_length=src_max_length,
+            tgt_max_length=tgt_max_length,
         )
     )
     # 测试数据加载
-    print("\n测试数据加载：")
+    print("test data loading: ")
     for i, batch in enumerate(dataloader):
-        print(f"\nBatch {i}:")
-        print(f"src形状: {batch['src'].shape} | 内容示例:\n{batch['src'][0]}")
-        print(f"tgt形状: {batch['tgt'].shape} | 内容示例:\n{batch['tgt'][0]}")
-        print(f"label形状: {batch['label'].shape} | 内容示例:\n{batch['label'][0]}")
+        print(f"Batch {i}:")
+        print(f"src shape: {batch['src'].shape} | sample:\n{batch['src'][0]}")
+        print(f"tgt shape: {batch['tgt'].shape} | sample:\n{batch['tgt'][0]}")
+        print(f"label shape: {batch['label'].shape} | sample:\n{batch['label'][0]}")
         break
 
 
