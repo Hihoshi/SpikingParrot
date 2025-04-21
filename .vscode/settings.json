@@ -1,5 +1,5 @@
 {
     "flake8.args":[
-        "--ignore=E501, W293, w391"
+        "--ignore=E501, E502, W293, W391"
     ]
 }

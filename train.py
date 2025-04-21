@@ -57,7 +57,7 @@ def save_checkpoint(model, optimizer, epoch, loss, acc, scaler, scheduler, confi
             'acc': acc,
             'scaler_state': scaler.state_dict(),
             'scheduler_state': scheduler.state_dict(),
-            'config': config  # 保存配置信息
+            'config': config,
         },
         os.path.join(config["checkpoint_dir"], f"epoch_{epoch:03d}.pt")
     )
@@ -114,7 +114,7 @@ def train(config):
         drop_last=True,
     )
 
-    # 模型初始化
+    # init the model
     model = SpikingParrot(
         bidirectional=config["bidirectional"],
         vocab_size=zh_tokenizer.vocab_size,
@@ -123,7 +123,7 @@ def train(config):
         num_layers=config["num_layers"],
     ).to(device)
 
-    # 优化器配置
+    # optimizer config
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config["learning_rate"],
@@ -137,10 +137,10 @@ def train(config):
         eta_min=config["scheduler_eta_min"]
     )
 
-    # 混合精度训练
+    # mixed precision training
     scaler = GradScaler(enabled=config["mixed_precision"])
 
-    # 断点续训
+    # retrain after break
     start_epoch = 0
     if os.path.exists(config["checkpoint_dir"]):
         model, optimizer, scaler, scheduler, start_epoch = load_latest_checkpoint(
@@ -148,7 +148,7 @@ def train(config):
         )
     print(f"Start training from epoch {start_epoch + 1}")
 
-    # 损失函数
+    # loss function
     loss_fn = nn.CrossEntropyLoss(
         ignore_index=zh_tokenizer.pad_token_id,
         label_smoothing=config["label_smoothing"],
@@ -172,37 +172,37 @@ def train(config):
             src = batch["src"].to(device)
             tgt = batch["tgt"].to(device)
             labels = batch["label"].to(device)
-            
-            optimizer.zero_grad()
-            
-            # 自动混合精度上下文
+
             with autocast(enabled=config["use_amp"]):
                 output = model(src, tgt)
                 loss = loss_fn(
                     output.reshape(-1, output.size(-1)),
                     labels.contiguous().view(-1)
                 )
-            
-            # 梯度缩放和裁剪
+
+            # grad norm and clip
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(
                 model.parameters(),
                 max_norm=config["grad_clip"]
             )
-            
-            # 参数更新
+
+            # param update
             scaler.step(optimizer)
             scaler.update()
-            model.reset()  # 重置神经元状态
 
-            # 准确率计算
+            # reset model
+            optimizer.zero_grad()
+            model.reset()
+
+            # performance eval
             with torch.no_grad():
                 preds = torch.argmax(output, dim=-1).squeeze(dim=1)
                 mask = (labels != zh_tokenizer.pad_token_id)
                 correct = (preds[mask] == labels[mask]).sum()
                 total_valid = mask.sum()
-                
+
                 batch_acc = correct.float() / total_valid if total_valid > 0 else 0.0
                 total_loss += loss.item() * config["batch_size"]
                 total_correct += correct.item()
@@ -213,12 +213,11 @@ def train(config):
                 acc=f'{batch_acc*100:.3f}%' if total_valid > 0 else '0.000%',
             )
 
-        # 计算平均指标
         avg_loss = total_loss / len(dataloader.dataset)
         avg_acc = total_correct / total_valid_tokens if total_valid_tokens > 0 else 0.0
         print(f"Epoch {epoch+1:03d} | Loss: {avg_loss:.3f} | Acc: {avg_acc*100:.3f}%")
-        
-        # 更新学习率和保存检查点
+
+        # update learning rate after a epoch and save check point
         scheduler.step()
         save_checkpoint(
             model, optimizer, epoch, avg_loss, avg_acc,

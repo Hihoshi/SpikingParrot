@@ -16,7 +16,6 @@ with open("data/corpus.en", "w", encoding='utf8') as f:
         dynamic_ncols=True
     )
     for i in corpus:
-        # jieba预切分
         f.write(i["en"] + "\n")
 
 
@@ -32,5 +31,5 @@ with open("data/corpus.zh", "w", encoding='utf8') as f:
         dynamic_ncols=True
     )
     for i in corpus:
-        # jieba预切分
+        # # jieba pretokenize
         f.write(" ".join(jieba.lcut(i["zh"])) + "\n")

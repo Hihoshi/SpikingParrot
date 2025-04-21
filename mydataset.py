@@ -51,7 +51,7 @@ class MyDataset(Dataset):
                 bar_format='{l_bar}{bar:32}{r_bar}',
                 dynamic_ncols=True
             ):
-                # 编码源语言（英语）
+                # get src ids
                 src_ids = en_tokenizer(
                     item['en'],
                     truncation=True,
@@ -59,7 +59,7 @@ class MyDataset(Dataset):
                     add_special_tokens=True
                 ).input_ids
                 
-                # 编码目标语言（中文）
+                # get tgt ids
                 tgt = " ".join(jieba.lcut(item['zh']))
                 tgt_ids = zh_tokenizer(
                     tgt,
@@ -67,10 +67,10 @@ class MyDataset(Dataset):
                     max_length=self.tgt_max_length,
                     add_special_tokens=True
                 ).input_ids
-                # 已经在中文和英文句子中自动添加[BOS]和[BOS]，所以这里不需要手动添加。
-                # 检查长度有效性
+                # [EOS] [BOS] will be automatically added
+                # check the length
                 if (
-                    ((len(src_ids) > self.src_max_length) or (len(tgt_ids) > self.tgt_max_length)) and
+                    ((len(src_ids) > self.src_max_length) or (len(tgt_ids) > self.tgt_max_length)) and \
                     (src_ids + tgt_ids < self.seq_max_length)
                 ):
                     continue
@@ -81,7 +81,7 @@ class MyDataset(Dataset):
                     "label": tgt_ids[1:],
                 })
 
-            # 保存预处理结果
+            # save the processed data
             with open(self.cache_path, 'wb') as f:
                 pickle.dump(self.processed_data, f)
             print(f"cache saved at: {self.cache_path}")
@@ -98,15 +98,15 @@ def collate_fn(batch, pad_token_id: int, src_max_length: int, tgt_max_length: in
     tgt = [torch.tensor(item["tgt"]) for item in batch]
     label = [torch.tensor(item["label"]) for item in batch]
 
-    # 源序列填充
+    # pad src
     src_padded = [F.pad(t, (0, src_max_length - t.size(0)), value=pad_token_id) for t in src]
     src_padded = torch.stack(src_padded)
     
-    # 目标序列填充
+    # pad tgt
     tgt_padded = [F.pad(t, (0, tgt_max_length - t.size(0)), value=pad_token_id) for t in tgt]
     tgt_padded = torch.stack(tgt_padded)
     
-    # 标签处理
+    # pad label
     label_padded = [F.pad(t, (0, tgt_max_length - t.size(0)), value=pad_token_id) for t in label]
     label_padded = torch.stack(label_padded)
 
@@ -128,7 +128,7 @@ def main():
 
     en_tokenizer = load_tokenizer("model/tokenizers", "en")
     zh_tokenizer = load_tokenizer("model/tokenizers", "zh")
-    # 创建数据集实例（使用示例参数）
+    # create dataset
     corpus_path = "data/corpus.json"
     dataset = MyDataset(
         corpus_path=corpus_path,
@@ -138,7 +138,7 @@ def main():
         tgt_max_length=tgt_max_length,
         seq_max_length=seq_max_length,
     )
-    # 创建DataLoader
+    # create dataloader
     dataloader = DataLoader(
         dataset,
         batch_size=4,
@@ -150,7 +150,7 @@ def main():
             tgt_max_length=tgt_max_length,
         )
     )
-    # 测试数据加载
+    # load test sample
     print("test data loading: ")
     for i, batch in enumerate(dataloader):
         print(f"Batch {i}:")
