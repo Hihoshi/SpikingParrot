@@ -4,7 +4,7 @@
 
 ## 运行
 ### 必要环境
-pytorch2.1.2+cu121
+`pytorch2.1.2+cu121`
 `pip install jieba transformers tokenizers snntorch tqdm`
 
 ### 准备数据
@@ -37,4 +37,3 @@ pytorch2.1.2+cu121
 ### 训练
 
 运行`train.py`训练模型即可训练模型
-
