@@ -44,6 +44,7 @@ class SpikingLayer(nn.Module):
     def _forward_seq(self, x_seq, syn=None, mem=None):
         """处理完整序列 (batch, seq_len, input_dim)"""
         B, S, _ = x_seq.shape
+        # preallocate space of variables
         outputs = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
         syns = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
         mems = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
@@ -108,7 +109,7 @@ class SpikingEncoder(nn.Module):
                     nn.ModuleDict({
                         "f_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
                         "b_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
-                        # fc for forward and backward output
+                        # fc for transforming forward and backward output to proper size
                         "fc": nn.Linear(hidden_dim * 2, hidden_dim),
                         "norm": Dyt(hidden_dim),
                     })
@@ -124,7 +125,8 @@ class SpikingEncoder(nn.Module):
                 src_flipped = torch.flip(src, dims=[1])
                 f_outputs, f_syns, f_mems = layer["f_layer"](src)
                 b_outputs, b_syns, b_mems = layer["b_layer"](src_flipped)
-                outputs = torch.cat((f_outputs, b_outputs), dim=-1)
+                # flip back b_layer output to match original order
+                outputs = torch.cat((f_outputs, torch.flip(b_outputs, dims=1)), dim=-1)
                 outputs = layer["norm"](layer["fc"](outputs))
             else:
                 outputs, syns, mems = layer(src)
