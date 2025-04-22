@@ -20,7 +20,6 @@ with open("data/corpus.en", "w", encoding='utf8') as f:
 
 
 with open("data/corpus.zh", "w", encoding='utf8') as f:
-    jieba.enable_parallel(8)
     print(jieba.lcut("这是一个结巴中文分词测试"))
     print("ZH jieba tokenizer test complete...")
     corpus = tqdm(

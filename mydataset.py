@@ -40,7 +40,6 @@ class MyDataset(Dataset):
                 raw_data = json.load(f)
 
             self.processed_data = []
-            jieba.enable_parallel(8)
             print(jieba.lcut("这是一个结巴中文分词测试"))
             print("jieba tokenizer test complete")
             for item in tqdm(

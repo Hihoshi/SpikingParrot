@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from mydataset import MyDataset, collate_fn
 from functools import partial
 from model import SpikingParrot
@@ -12,8 +12,8 @@ from tqdm import tqdm
 # 集中化的配置参数
 TRAINING_CONFIG = {
     # 数据参数
-    "batch_size": 797,
-    "num_workers": 8,
+    "batch_size": 293,
+    "num_workers": 2,
     "src_max_length": 48,
     "tgt_max_length": 32,
     "seq_max_length": 64,
@@ -21,7 +21,7 @@ TRAINING_CONFIG = {
     # 模型架构参数
     "bidirectional": True,
     "embedding_dim": 2048,
-    "hidden_dim": 512,
+    "hidden_dim": 256,
     "num_layers": 4,
     
     # 优化器参数
@@ -31,7 +31,7 @@ TRAINING_CONFIG = {
     
     # 训练参数
     "epochs": 5,
-    "grad_clip": 1.0,
+    "grad_clip": 2.0,
     "label_smoothing": 0.03,
     
     # 学习率调度器
@@ -84,7 +84,7 @@ def load_latest_checkpoint(model, optimizer, scaler, scheduler, config):
 
 
 def train(config):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
 
     # 初始化分词器
     en_tokenizer = load_tokenizer("model/tokenizers", "en")
@@ -116,11 +116,11 @@ def train(config):
 
     # init the model
     model = SpikingParrot(
-        bidirectional=config["bidirectional"],
-        vocab_size=zh_tokenizer.vocab_size,
         embedding_dim=config["embedding_dim"],
+        vocab_size=zh_tokenizer.vocab_size,
         hidden_dim=config["hidden_dim"],
         num_layers=config["num_layers"],
+        bidirectional=config["bidirectional"],
     ).to(device)
 
     # optimizer config
@@ -140,6 +140,12 @@ def train(config):
     # mixed precision training
     scaler = GradScaler(enabled=config["mixed_precision"])
 
+    # loss function
+    loss_fn = nn.CrossEntropyLoss(
+        ignore_index=zh_tokenizer.pad_token_id,
+        label_smoothing=config["label_smoothing"],
+    )
+
     # retrain after break
     start_epoch = 0
     if os.path.exists(config["checkpoint_dir"]):
@@ -147,12 +153,6 @@ def train(config):
             model, optimizer, scaler, scheduler, config
         )
     print(f"Start training from epoch {start_epoch + 1}")
-
-    # loss function
-    loss_fn = nn.CrossEntropyLoss(
-        ignore_index=zh_tokenizer.pad_token_id,
-        label_smoothing=config["label_smoothing"],
-    )
 
     for epoch in range(start_epoch, config["epochs"]):
         model.train()
@@ -173,7 +173,7 @@ def train(config):
             tgt = batch["tgt"].to(device)
             labels = batch["label"].to(device)
 
-            with autocast(enabled=config["use_amp"]):
+            with autocast(device_type="cuda", enabled=config["use_amp"]):
                 output = model(src, tgt)
                 loss = loss_fn(
                     output.reshape(-1, output.size(-1)),
@@ -217,7 +217,7 @@ def train(config):
         avg_acc = total_correct / total_valid_tokens if total_valid_tokens > 0 else 0.0
         print(f"Epoch {epoch+1:03d} | Loss: {avg_loss:.3f} | Acc: {avg_acc*100:.3f}%")
 
-        # update learning rate after a epoch and save check point
+        # update learning rate after a epoch and save checkpoint
         scheduler.step()
         save_checkpoint(
             model, optimizer, epoch, avg_loss, avg_acc,

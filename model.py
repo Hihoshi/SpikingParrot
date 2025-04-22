@@ -6,7 +6,10 @@ from normalizer import Dyt
 
 
 class SpikingLayer(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, residual: bool = True):
+    def __init__(self,
+        input_dim: int, hidden_dim: int,
+        residual: bool = True
+    ):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.residual = residual
@@ -22,200 +25,198 @@ class SpikingLayer(nn.Module):
             init_hidden=False,
         )
 
-    def reset_hidden(self, batch_size=1, device="cpu"):
-        return self.slstm.reset_mem(batch_size=batch_size, device=device)
+    def reset_hidden(self):
+        return self.slstm.reset_mem()
 
-    def forward(self, x, syn_mem=None):
+    def forward(self, x, syn=None, mem=None):
         """
         支持两种模式：
         1. 序列模式 (训练):  x.shape = (B, S, D)
-        2. 单步模式 (推理): x.shape = (B, D)
+        2. 单步模式 (推理):  x.shape = (B, D)
         """
-        if x.dim() == 3:  # 训练模式
-            return self._forward_sequence(x, *syn_mem) if syn_mem else self._forward_sequence(x)
-        elif x.dim() == 2:  # 推理模式
-            return self._forward_step(x, *syn_mem)
+        if x.dim() == 3:
+            return self._forward_seq(x, syn, mem)
+        elif x.dim() == 2:
+            return self._forward_step(x, syn, mem)
         else:
-            raise ValueError("输入维度应为2（单步）或3（序列）")
+            raise ValueError("输入维度应为2(单步)或3(序列)")
 
-    def _forward_sequence(self, x_seq, syn_init=None, mem_init=None):
+    def _forward_seq(self, x_seq, syn=None, mem=None):
         """处理完整序列 (batch, seq_len, input_dim)"""
         B, S, _ = x_seq.shape
-        output = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
-        
-        # 初始化隐藏状态
-        syn = syn_init if syn_init is not None else torch.zeros(B, self.hidden_dim, device=x_seq.device)
-        mem = mem_init if mem_init is not None else torch.zeros(B, self.hidden_dim, device=x_seq.device)
+        outputs = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
+        syns = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
+        mems = torch.zeros(B, S, self.hidden_dim, device=x_seq.device)
 
-        for t in range(S):
-            spk, syn, mem = self.slstm(x_seq[:, t], syn, mem)
-            out = self.fc(spk)
+        # 初始化隐藏状态
+        syn = torch.zeros(B, self.hidden_dim, device=x_seq.device) \
+            if syn is None else syn
+        mem = torch.zeros(B, self.hidden_dim, device=x_seq.device) \
+            if mem is None else mem
+
+        for step in range(S):
+            spk, syn, mem = self.slstm(x_seq[:, step, :], syn, mem)
+            output = self.fc(spk)
             if self.residual:
-                out = self.normalizer(out + x_seq[:, t])
+                output = self.normalizer(output + x_seq[:, step, :])
             else:
-                out = self.normalizer(out)
-            output[:, t] = out
-        
+                output = self.normalizer(output)
+            outputs[:, step] = output
+            syns[:, step, :] = syn
+            mems[:, step, :] = mem
+
+        return outputs, syns, mems
+
+    def _forward_step(self, x_step, syn, mem):
+        """处理单个时间步 (batch, input_dim)"""
+        B, _ = x_step.shape
+        syn = torch.zeros(B, self.hidden_dim, device=x_step.device) \
+            if syn is None else syn
+        mem = torch.zeros(B, self.hidden_dim, device=x_step.device) \
+            if mem is None else mem
+
+        spk, syn, mem = self.slstm(x_step, syn, mem)
+        output = self.fc(spk)
+        if self.residual:
+            output = self.normalizer(output + x_step)
+        else:
+            output = self.normalizer(output)
         return output, syn, mem
 
-    def _forward_step(self, x_t, syn, mem):
-        """处理单个时间步 (batch, input_dim)"""
-        spk, syn, mem = self.slstm(x_t, syn, mem)
-        out = self.fc(spk)
-        if self.residual:
-            out = self.normalizer(out + x_t)
+
+class SpikingEncoder(nn.Module):
+    def __init__(
+        self, embedding_dim: int, vocab_size: int,
+        hidden_dim: int, num_layers: int,
+        bidirectional:bool = False,
+    ):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.bidirectional = bidirectional
+        self.num_layers = num_layers
+
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.norm = Dyt(embedding_dim)
+        self.layers = nn.ModuleList()
+
+        # the fisrt input dim is embedding dim
+        input_dim = embedding_dim
+        for i in range(num_layers):
+            if bidirectional:
+                self.layers.append(
+                    nn.ModuleDict({
+                        "f_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
+                        "b_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
+                        # fc for forward and backward output
+                        "fc": nn.Linear(hidden_dim * 2, hidden_dim),
+                        "norm": Dyt(hidden_dim),
+                    })
+                )
+            else:
+                self.layers.append(SpikingLayer(input_dim, hidden_dim, residual=(i > 0)))
+            input_dim = hidden_dim
+
+    def forward(self, src):
+        src = self.norm(self.embedding(src))
+        for _, layer  in enumerate(self.layers):
+            if self.bidirectional:
+                src_flipped = torch.flip(src, dims=[1])
+                f_outputs, f_syns, f_mems = layer["f_layer"](src)
+                b_outputs, b_syns, b_mems = layer["b_layer"](src_flipped)
+                outputs = torch.cat((f_outputs, b_outputs), dim=-1)
+                outputs = layer["norm"](layer["fc"](outputs))
+            else:
+                outputs, syns, mems = layer(src)
+            src = outputs
+        if self.bidirectional:
+            syn = torch.cat([f_syns[:, -1, :], b_syns[:, 0, :]], dim=-1)
+            mem = torch.cat([f_mems[:, -1, :], b_mems[:, 0, :]], dim=-1)
         else:
-            out = self.normalizer(out)
-        return out, syn, mem
+            syn = syns[:, -1, :]
+            mem = mems[:, -1, :]
+
+        return syn, mem
+
+
+class SpikingDecoder(nn.Module):
+    def __init__(
+        self, embedding_dim: int, vocab_size: int,
+        hidden_dim: int, num_layers: int,
+    ):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.norm = Dyt(embedding_dim)
+        self.layers = nn.ModuleList()
+
+        input_dim = embedding_dim
+        for i in range(num_layers):
+            self.layers.append(SpikingLayer(input_dim, hidden_dim, residual=(i > 0)))
+            input_dim = hidden_dim
+
+    def forward(self, tgt, syn, mem):
+        """
+        支持两种模式：
+        1. 序列模式 (训练):  x.shape = (B, S, D)
+        2. 单步模式 (推理):  x.shape = (B, D)
+        """
+        tgt = self.norm(self.embedding(tgt))
+        if tgt.dim() == 3:
+            return self._forward_seq(tgt, syn, mem)
+        elif tgt.dim() == 2:
+            return self._forward_step(tgt, syn, mem)
+        else:
+            raise ValueError("输入维度应为2(单步)或3(序列)")
+    
+    def _forward_seq(self, tgt, syn, mem):
+        for _, layer in enumerate(self.layers):
+            outputs, syns, mems = layer(tgt, syn, mem)
+            syn = syns[:, -1, :]
+            mem = mems[:, -1, :]
+            tgt = outputs
+        
+        return outputs
+    
+    def _forward_step(self, tgt, syn, mem):
+        for _, layer in enumerate(self.layers):
+            output, syn, mem = layer(tgt, syn, mem)
+            tgt = output
+
+        return output
 
 
 class SpikingParrot(nn.Module):
     def __init__(
-        self, bidirectional: bool, vocab_size: int, embedding_dim: int,
-        hidden_dim: int, num_layers: int
+        self, embedding_dim: int, vocab_size: int,
+        hidden_dim: int, num_layers: int,
+        bidirectional: bool = False,
     ):
-        super().__init__()
-        self.bidirectional = bidirectional
-        self.hidden_dim = hidden_dim
         self.num_layers = num_layers
+        self.bidirectional = bidirectional
 
-        # 初始化嵌入层和归一化
-        self.src_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.tgt_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.src_normalizer = Dyt(embedding_dim)
-        self.tgt_normalizer = Dyt(embedding_dim)
-
-        # 编码解码结构初始化
-        self._init_encoder_decoder()
-
-        # 最终分类层
-        self.fc = nn.Linear(hidden_dim * (2 if bidirectional else 1), vocab_size)
-        
-        # 双向状态融合层
+        super().__init__()
+        self.encoder = SpikingEncoder(embedding_dim, vocab_size, hidden_dim, num_layers, bidirectional)
         if bidirectional:
-            self.syn_fc = nn.Linear(hidden_dim * 2, hidden_dim * 2)
-            self.mem_fc = nn.Linear(hidden_dim * 2, hidden_dim * 2)
-
-    def reset(self):
-        """reset all slstm hidden states"""
-        for layer in self.encoders:
-            if isinstance(layer, nn.ModuleDict):
-                utils.reset(layer['forward_'].slstm)
-                utils.reset(layer['backward_'].slstm)
-            else:
-                utils.reset(layer.slstm)
-        for layer in self.decoders:
-            utils.reset(layer.slstm)
-
-    def _init_encoder_decoder(self):
-        """动态构建编码解码结构"""
-        self.encoders = nn.ModuleList()
-        self.decoders = nn.ModuleList()
-
-        enc_dim = self.src_embedding.embedding_dim
-        dec_dim = self.tgt_embedding.embedding_dim
-
-        for i in range(self.num_layers):
-            # 编码器层
-            if self.bidirectional:
-                encoder = nn.ModuleDict({
-                    'forward_': SpikingLayer(enc_dim, self.hidden_dim, residual=(i > 0)),
-                    'backward_': SpikingLayer(enc_dim, self.hidden_dim, residual=(i > 0))
-                })
-                enc_dim = self.hidden_dim  # 后续层的输入维度
-            else:
-                encoder = SpikingLayer(enc_dim, self.hidden_dim, residual=(i > 0))
-                enc_dim = self.hidden_dim
-
-            # 解码器层
-            decoder_in_dim = dec_dim
-            decoder_hid_dim = self.hidden_dim * (2 if self.bidirectional else 1)
-            decoder = SpikingLayer(decoder_in_dim, decoder_hid_dim, residual=(i > 0))
-            dec_dim = decoder_hid_dim  # 更新下一层输入维度
-
-            self.encoders.append(encoder)
-            self.decoders.append(decoder)
-
-    def encode(self, src):
-        """编码过程支持两种模式"""
-        src_emb = self.src_normalizer(self.src_embedding(src))
-        
-        if self.bidirectional:
-            return self._bidirectional_encode(src_emb)
-        return self._unidirectional_encode(src_emb)
-
-    def _bidirectional_encode(self, src_emb):
-        """双向编码实现"""
-        batch_size, seq_len, _ = src_emb.shape
-        src_flipped = torch.flip(src_emb, dims=[1])
-
-        # 存储各层最终状态
-        f_syn, f_mem, b_syn, b_mem = None, None, None, None
-
-        for layer in self.encoders:
-            # 前向分支
-            f_out, f_syn, f_mem = layer['forward_'](src_emb)
-            # 后向分支（输入翻转）
-            b_out, b_syn, b_mem = layer['backward_'](src_flipped)
-            
-            # 更新下一层输入
-            src_emb, src_flipped = f_out, b_out
-
-        # 合并双向状态
-        syn = self.syn_fc(torch.cat([f_syn, b_syn], dim=1))
-        mem = self.mem_fc(torch.cat([f_mem, b_mem], dim=1))
-        return syn, mem
-
-    def _unidirectional_encode(self, src_emb):
-        """单向编码实现"""
-        syn, mem = None, None
-        for layer in self.encoders:
-            src_emb, syn, mem = layer(src_emb)
-        return syn, mem
-
-    def decode(self, tgt, syn, mem):
-        """解码过程支持两种模式"""
-        tgt_emb = self.tgt_normalizer(self.tgt_embedding(tgt))
-        
-        for i, layer in enumerate(self.decoders):
-            if i == 0:  # 第一层使用编码器状态
-                out, syn, mem = layer(tgt_emb, (syn, mem))
-            else:       # 其他层重置状态
-                out, *_ = layer(tgt_emb)
-            tgt_emb = out
-        return tgt_emb
+            self.decoder = SpikingDecoder(embedding_dim, vocab_size, hidden_dim * 2, num_layers)
+            self.fc = nn.Linear(hidden_dim * 2, vocab_size)
+        else:
+            self.decoder = SpikingDecoder(embedding_dim, vocab_size, hidden_dim, num_layers)
+            self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, src, tgt):
-        # 训练时使用序列模式
-        syn, mem = self.encode(src)
-        output = self.decode(tgt, syn, mem)
-        return self.fc(output)
+        syn, mem = self.encoder(src)
+        outputs = self.decoder(tgt, syn, mem)
+        return self.fc(outputs)
 
-    ##########################
-    # 推理专用方法
-    ##########################
-    def init_states(self, batch_size=1, device="cpu"):
-        """初始化推理状态"""
-        states = {}
-        # 编码器状态
-        for i, layer in enumerate(self.encoders):
+    def reset(self):
+        for i in range(self.num_layers):
             if self.bidirectional:
-                states[f'enc{i}_f'] = layer['forward_'].reset_hidden(batch_size, device)
-                states[f'enc{i}_b'] = layer['backward_'].reset_hidden(batch_size, device)
+                utils.reset(self.encoder.layers[i]["f_layer"].slstm)
+                utils.reset(self.encoder.layers[i]["b_layer"].slstm)
             else:
-                states[f'enc{i}'] = layer.reset_hidden(batch_size, device)
-        
-        # 解码器状态
-        for i, layer in enumerate(self.decoders):
-            states[f'dec{i}'] = layer.reset_hidden(batch_size, device)
-        
-        return states
-
-    def step_decode(self, x_t, states):
-        """单步解码推理"""
-        # 编码阶段需要预先完成
-        # 更新解码器状态
-        for i, layer in enumerate(self.decoders):
-            dec_key = f'dec{i}'
-            x_t, states[dec_key] = layer(x_t, states[dec_key])
-        return self.fc(x_t), states
+                utils.reset(self.encoder.layers[i].slstm)
+            utils.reset(self.decoder.layers[i].slstm)
