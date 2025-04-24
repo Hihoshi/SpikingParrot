@@ -23,7 +23,7 @@ def create_tokenizer(
     corpus_path: str,
     save_dir: str,
     language: str,
-    vocab_size: int = 65536,
+    vocab_size: int,
 ):
     """create a univeral bpe tokenizer"""
     if not os.path.exists(corpus_path):
@@ -98,13 +98,13 @@ if __name__ == "__main__":
         corpus_path="data/corpus.en",
         save_dir="model/tokenizers",
         language="en",
-        vocab_size=32768,
+        vocab_size=16384,
     )
     zh_tokenizer = create_tokenizer(
         corpus_path="data/corpus.zh",
         save_dir="model/tokenizers",
         language="zh",
-        vocab_size=32768,
+        vocab_size=16384,
     )
 
     en_tokenizer = load_tokenizer("model/tokenizers", "en")

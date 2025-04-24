@@ -9,39 +9,38 @@ from mytokenizer import load_tokenizer
 import os
 from tqdm import tqdm
 
-# 集中化的配置参数
+
 TRAINING_CONFIG = {
-    # 数据参数
-    "batch_size": 293,
+    # parameter config
+    "batch_size": 401,
     "num_workers": 2,
     "src_max_length": 48,
     "tgt_max_length": 32,
     "seq_max_length": 64,
     
-    # 模型架构参数
-    "bidirectional": True,
-    "embedding_dim": 2048,
+    # model config
+    "bidirectional": True,  # if bidirectional, hidden dim will be two times of that in the config
+    "embedding_dim": 512,
     "hidden_dim": 256,
     "num_layers": 4,
     
-    # 优化器参数
+    # optimizer config
     "learning_rate": 1e-3,
     "betas": (0.9, 0.99),
     "weight_decay": 0.01,
     
-    # 训练参数
+    # train config
     "epochs": 5,
-    "grad_clip": 2.0,
+    "grad_clip": 1.0,
     "label_smoothing": 0.03,
     
-    # 学习率调度器
+    # lr scheduler config
     "scheduler_eta_min": 1e-5,
     
-    # 设备与精度
     "use_amp": True,
     "mixed_precision": True,
     
-    # 检查点配置
+    # checkpoint path
     "checkpoint_dir": "model/checkpoints"
 }
 
@@ -116,8 +115,9 @@ def train(config):
 
     # init the model
     model = SpikingParrot(
-        embedding_dim=config["embedding_dim"],
+        padding_idx=zh_tokenizer.pad_token_id,
         vocab_size=zh_tokenizer.vocab_size,
+        embedding_dim=config["embedding_dim"],
         hidden_dim=config["hidden_dim"],
         num_layers=config["num_layers"],
         bidirectional=config["bidirectional"],
@@ -198,7 +198,7 @@ def train(config):
 
             # performance eval
             with torch.no_grad():
-                preds = torch.argmax(output, dim=-1).squeeze(dim=1)
+                preds = torch.argmax(torch.softmax(output, dim=-1), dim=-1).squeeze(dim=1)
                 mask = (labels != zh_tokenizer.pad_token_id)
                 correct = (preds[mask] == labels[mask]).sum()
                 total_valid = mask.sum()
