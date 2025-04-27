@@ -13,9 +13,9 @@ import os
 
 SPECIAL_TOKENS = {
     "pad_token": "[PAD]",
-    "unk_token": "[UNK]",
     "bos_token": "[BOS]",
     "eos_token": "[EOS]",
+    "unk_token": "[UNK]",
 }
 
 

@@ -21,7 +21,6 @@ class SpikingLayer(nn.Module):
             hidden_size=hidden_dim,
             spike_grad=sdyt(hidden_dim),
             learn_threshold=True,
-            reset_mechanism="subtract",
             init_hidden=False,
         )
 
@@ -102,9 +101,6 @@ class SpikingEncoder(nn.Module):
                     nn.ModuleDict({
                         "f_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
                         "b_layer": SpikingLayer(input_dim, hidden_dim, residual=(i > 0)),
-                        # fc for transforming forward and backward output to proper size
-                        "fc": nn.Linear(hidden_dim * 2, hidden_dim),
-                        "norm": Dyt(hidden_dim),
                     })
                 )
             else:
@@ -114,16 +110,13 @@ class SpikingEncoder(nn.Module):
 
     def forward(self, src):
         src = self.norm(self.embedding(src))
+        f_outputs = src
+        b_outputs = torch.flip(src, dims=[1])
         syns, mems = [], []
         for _, layer  in enumerate(self.layers):
             if self.bidirectional:
-                src_flipped = torch.flip(src, dims=[1])
-                f_outputs, f_syn, f_mem = layer["f_layer"](src)
-                b_outputs, b_syn, b_mem = layer["b_layer"](src_flipped)
-                # flip back b_layer output to match the original order
-                # then concatenate f_output together
-                outputs = torch.cat((f_outputs, torch.flip(b_outputs, dims=[1])), dim=-1)
-                outputs = layer["norm"](layer["fc"](outputs))
+                f_outputs, f_syn, f_mem = layer["f_layer"](f_outputs)
+                b_outputs, b_syn, b_mem = layer["b_layer"](b_outputs)
             else:
                 outputs, syn, mem = layer(src)
             # output aligned syn, mem of the last layer
@@ -133,7 +126,6 @@ class SpikingEncoder(nn.Module):
             # append each layer's syn, mem to the list
             syns.append(syn)
             mems.append(mem)
-            src = outputs
         return syns, mems
 
 
@@ -200,7 +192,7 @@ class SpikingParrot(nn.Module):
             self.decoder = SpikingDecoder(padding_idx, embedding_dim, vocab_size, hidden_dim * 2, num_layers)
             self.fc = nn.Linear(hidden_dim * 2, vocab_size)
         else:
-            self.decoder = SpikingDecoder(embedding_dim, vocab_size, hidden_dim, num_layers)
+            self.decoder = SpikingDecoder(padding_idx, embedding_dim, vocab_size, hidden_dim, num_layers)
             self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, src, tgt):
@@ -219,14 +211,15 @@ class SpikingParrot(nn.Module):
             embedded = self.decoder.norm(embedded)
             output, syns, mems = self.decoder._forward_step(embedded, syns, mems)
             logits = self.fc(output)
-            next_tokens = torch.argmax(torch.softmax(logits, dim=-1), dim=-1).unsqueeze(1)
+            next_tokens = torch.argmax(torch.log_softmax(logits, dim=-1), dim=-1).unsqueeze(1)
             input_ids = torch.cat([input_ids, next_tokens], dim=1)
+
         sequences = []
         for seq in input_ids:
             seq_list = seq.tolist()
             try:
                 eos_pos = seq_list.index(eos_token_id)
-                seq_list = seq_list[:eos_pos + 1]
+                seq_list = seq_list[: eos_pos + 1]
             except ValueError:
                 pass
             sequences.append(seq_list)
@@ -247,7 +240,6 @@ class SpikingParrot(nn.Module):
                 if seq[0, -1] == eos_token_id:
                     completed.append((seq, score))
                     continue
-                
                 current_input = seq[:, -1]
                 embedded = self.decoder.embedding(current_input)
                 embedded = self.decoder.norm(embedded)
@@ -272,7 +264,7 @@ class SpikingParrot(nn.Module):
         best_seq = completed[0][0][0].tolist() if completed else []
         try:
             eos_pos = best_seq.index(eos_token_id)
-            best_seq = best_seq[:eos_pos+1]
+            best_seq = best_seq[: eos_pos + 1]
         except ValueError:
             pass
         return [best_seq]

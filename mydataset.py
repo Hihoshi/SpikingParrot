@@ -122,8 +122,8 @@ def main():
     from functools import partial
 
     src_max_length = 48
-    tgt_max_length = 32
-    seq_max_length = 64
+    tgt_max_length = 36
+    seq_max_length = 72
 
     en_tokenizer = load_tokenizer("model/tokenizers", "en")
     zh_tokenizer = load_tokenizer("model/tokenizers", "zh")

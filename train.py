@@ -13,10 +13,9 @@ from tqdm import tqdm
 TRAINING_CONFIG = {
     # parameter config
     "batch_size": 401,
-    "num_workers": 2,
     "src_max_length": 48,
-    "tgt_max_length": 32,
-    "seq_max_length": 64,
+    "tgt_max_length": 36,
+    "seq_max_length": 72,
     
     # model config
     "bidirectional": True,  # if bidirectional, hidden dim will be two times of that in the config
@@ -30,8 +29,8 @@ TRAINING_CONFIG = {
     "weight_decay": 0.01,
     
     # train config
-    "epochs": 5,
-    "grad_clip": 1.0,
+    "epochs": 10,
+    "grad_clip": 2.0,
     "label_smoothing": 0.03,
     
     # lr scheduler config
@@ -108,7 +107,6 @@ def train(config):
             src_max_length=config["src_max_length"],
             tgt_max_length=config["tgt_max_length"],
         ),
-        num_workers=config["num_workers"],
         shuffle=True,
         drop_last=True,
     )
@@ -198,7 +196,7 @@ def train(config):
 
             # performance eval
             with torch.no_grad():
-                preds = torch.argmax(torch.softmax(output, dim=-1), dim=-1).squeeze(dim=1)
+                preds = torch.argmax(torch.log_softmax(output, dim=-1), dim=-1).squeeze(dim=1)
                 mask = (labels != zh_tokenizer.pad_token_id)
                 correct = (preds[mask] == labels[mask]).sum()
                 total_valid = mask.sum()
