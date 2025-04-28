@@ -81,13 +81,11 @@ def create_tokenizer(
     )
 
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, f"BPE_Tokenizer_{language}")
-    fast_tokenizer.save_pretrained(save_path)
+    fast_tokenizer.save_pretrained(save_dir)
     return fast_tokenizer
 
 
-def load_tokenizer(path: str, language: str):
-    path = f"{path}/BPE_Tokenizer_{language}"
+def load_tokenizer(path: str):
     if not os.path.exists(path):
         raise FileNotFoundError("can not find tokenizer, plz train first")
     return PreTrainedTokenizerFast.from_pretrained(path)
@@ -96,19 +94,19 @@ def load_tokenizer(path: str, language: str):
 if __name__ == "__main__":
     en_tokenizer = create_tokenizer(
         corpus_path="data/corpus.en",
-        save_dir="model/tokenizers",
+        save_dir="model/tokenizers/en",
         language="en",
         vocab_size=16384,
     )
     zh_tokenizer = create_tokenizer(
         corpus_path="data/corpus.zh",
-        save_dir="model/tokenizers",
+        save_dir="model/tokenizers/zh",
         language="zh",
         vocab_size=16384,
     )
 
-    en_tokenizer = load_tokenizer("model/tokenizers", "en")
-    zh_tokenizer = load_tokenizer("model/tokenizers", "zh")
+    en_tokenizer = load_tokenizer("model/tokenizers/en")
+    zh_tokenizer = load_tokenizer("model/tokenizers/zh")
 
     # 测试英文处理
     en_text = "How many books do you think you've read so far?"
