@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.amp import autocast, GradScaler
+from torch.cuda.amp import autocast, GradScaler
 from mydataset import MyDataset, collate_fn
 from functools import partial
 from model import SpikingParrot
@@ -12,16 +12,15 @@ from tqdm import tqdm
 
 TRAINING_CONFIG = {
     # parameter config
-    "batch_size": 401,
+    "batch_size": 601,
     "src_max_length": 48,
-    "tgt_max_length": 36,
-    "seq_max_length": 72,
+    "tgt_max_length": 32,
     
     # model config
-    "bidirectional": True,  # if bidirectional, hidden dim will be two times of that in the config
-    "embedding_dim": 512,
+    "embedding_dim": 1024,
     "hidden_dim": 256,
     "num_layers": 4,
+    "bidirectional": True,
     
     # optimizer config
     "learning_rate": 1e-3,
@@ -29,9 +28,10 @@ TRAINING_CONFIG = {
     "weight_decay": 0.01,
     
     # train config
-    "epochs": 10,
+    "epochs": 5,
     "grad_clip": 2.0,
     "label_smoothing": 0.03,
+    "num_workers": 8,
     
     # lr scheduler config
     "scheduler_eta_min": 1e-5,
@@ -49,13 +49,13 @@ def save_checkpoint(model, optimizer, epoch, loss, acc, scaler, scheduler, confi
     torch.save(
         {
             'epoch': epoch,
-            'model_state': model.state_dict(),
-            'optim_state': optimizer.state_dict(),
             'loss': loss,
             'acc': acc,
+            'config': config,
+            'model_state': model.state_dict(),
+            'optim_state': optimizer.state_dict(),
             'scaler_state': scaler.state_dict(),
             'scheduler_state': scheduler.state_dict(),
-            'config': config,
         },
         os.path.join(config["checkpoint_dir"], f"epoch_{epoch:03d}.pt")
     )
@@ -85,17 +85,16 @@ def train(config):
     device = torch.device("cuda")
 
     # 初始化分词器
-    en_tokenizer = load_tokenizer("model/tokenizers", "en")
-    zh_tokenizer = load_tokenizer("model/tokenizers", "zh")
+    zh_tokenizer = load_tokenizer("model/tokenizers/zh")
 
     # 初始化数据集
     dataset = MyDataset(
-        en_tokenizer,
-        zh_tokenizer,
+        "model/tokenizers/en",
+        "model/tokenizers/zh",
         "data/corpus.json",
         src_max_length=config["src_max_length"],
         tgt_max_length=config["tgt_max_length"],
-        seq_max_length=config["seq_max_length"],
+        num_workers=config["num_workers"],
     )
 
     dataloader = DataLoader(
@@ -109,6 +108,7 @@ def train(config):
         ),
         shuffle=True,
         drop_last=True,
+        num_workers=config["num_workers"],
     )
 
     # init the model
@@ -118,7 +118,7 @@ def train(config):
         embedding_dim=config["embedding_dim"],
         hidden_dim=config["hidden_dim"],
         num_layers=config["num_layers"],
-        bidirectional=config["bidirectional"],
+        bidirectional=config["bidirectional"]
     ).to(device)
 
     # optimizer config
@@ -171,7 +171,7 @@ def train(config):
             tgt = batch["tgt"].to(device)
             labels = batch["label"].to(device)
 
-            with autocast(device_type="cuda", enabled=config["use_amp"]):
+            with autocast(enabled=config["use_amp"]):
                 output = model(src, tgt)
                 loss = loss_fn(
                     output.reshape(-1, output.size(-1)),
@@ -190,9 +190,7 @@ def train(config):
             scaler.step(optimizer)
             scaler.update()
 
-            # reset model
             optimizer.zero_grad()
-            model.reset()
 
             # performance eval
             with torch.no_grad():
