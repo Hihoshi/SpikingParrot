@@ -1,7 +1,7 @@
-# inference.py
 import torch
 from model import SpikingParrot
 from mytokenizer import load_tokenizer
+
 
 def load_model(checkpoint_path, config):
     model = SpikingParrot(
@@ -10,22 +10,24 @@ def load_model(checkpoint_path, config):
         vocab_size=config['vocab_size'],
         hidden_dim=config['hidden_dim'],
         num_layers=config['num_layers'],
-        bidirectional=config['bidirectional']
+        bidirectional=config['bidirectional'],
+        dropout=config["dropout"]
     )
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
     model.load_state_dict(checkpoint['model_state'])
     return model
 
-def main():
-    en_tokenizer = load_tokenizer("model/tokenizers", "en")
-    zh_tokenizer = load_tokenizer("model/tokenizers", "zh")
 
-    checkpoint = torch.load("model/checkpoints/epoch_005.pt", map_location='cpu')
+def main():
+    en_tokenizer = load_tokenizer("model/tokenizers/en")
+    zh_tokenizer = load_tokenizer("model/tokenizers/zh")
+
+    checkpoint = torch.load("model/checkpoints/epoch_004.pt", map_location='cpu')
     config = checkpoint['config']
     config['padding_idx'] = zh_tokenizer.pad_token_id
     config['vocab_size'] = zh_tokenizer.vocab_size
 
-    model = load_model("model/checkpoints/epoch_005.pt", config)
+    model = load_model("model/checkpoints/epoch_004.pt", config)
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -43,17 +45,11 @@ def main():
                 src_ids,
                 bos_token_id=en_tokenizer.bos_token_id,
                 eos_token_id=en_tokenizer.eos_token_id,
+                max_length=48,
             )
-            model.reset()
-            beam_output = model.beam_search(
-                src_ids,
-                bos_token_id=en_tokenizer.bos_token_id,
-                eos_token_id=en_tokenizer.eos_token_id,
-            )
-            model.reset()
 
         print("贪心解码:", zh_tokenizer.decode(greedy_output[0], skip_special_tokens=True))
-        print("集束搜索:", zh_tokenizer.decode(beam_output[0], skip_special_tokens=True))
+
 
 if __name__ == "__main__":
     main()

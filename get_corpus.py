@@ -21,7 +21,7 @@ with open("data/corpus.en", "w", encoding='utf8') as f:
 
 with open("data/corpus.zh", "w", encoding='utf8') as f:
     print(jieba.lcut("这是一个结巴中文分词测试"))
-    print("ZH jieba tokenizer test complete...")
+    print("jieba pretokenizer test complete...")
     corpus = tqdm(
         corpus,
         unit="sentence",

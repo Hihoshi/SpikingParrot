@@ -161,7 +161,7 @@ def main():
     from mytokenizer import load_tokenizer
 
     src_max_length = 48
-    tgt_max_length = 32
+    tgt_max_length = 48
 
     en_tokenizer_dir = "model/tokenizers/en"
     zh_tokenizer_dir = "model/tokenizers/zh"

@@ -12,15 +12,16 @@ from tqdm import tqdm
 
 TRAINING_CONFIG = {
     # parameter config
-    "batch_size": 601,
+    "batch_size": 449,
     "src_max_length": 48,
-    "tgt_max_length": 32,
+    "tgt_max_length": 48,
     
     # model config
-    "embedding_dim": 1024,
-    "hidden_dim": 256,
+    "embedding_dim": 512,
+    "hidden_dim": 512,
     "num_layers": 4,
     "bidirectional": True,
+    "dropout": 0.01,
     
     # optimizer config
     "learning_rate": 1e-3,
@@ -28,13 +29,13 @@ TRAINING_CONFIG = {
     "weight_decay": 0.01,
     
     # train config
-    "epochs": 5,
-    "grad_clip": 2.0,
-    "label_smoothing": 0.03,
+    "epochs": 8,
+    "grad_clip": 1.0,
+    "label_smoothing": 0.01,
     "num_workers": 8,
     
     # lr scheduler config
-    "scheduler_eta_min": 1e-5,
+    "scheduler_eta_min": 1e-6,
     
     "use_amp": True,
     "mixed_precision": True,
@@ -118,7 +119,8 @@ def train(config):
         embedding_dim=config["embedding_dim"],
         hidden_dim=config["hidden_dim"],
         num_layers=config["num_layers"],
-        bidirectional=config["bidirectional"]
+        bidirectional=config["bidirectional"],
+        dropout=config["dropout"],
     ).to(device)
 
     # optimizer config
@@ -190,6 +192,7 @@ def train(config):
             scaler.step(optimizer)
             scaler.update()
 
+            model.reset()
             optimizer.zero_grad()
 
             # performance eval

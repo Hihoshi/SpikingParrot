@@ -8,17 +8,17 @@ from binarizer import sdyt
 class SpikingLayer(nn.Module):
     def __init__(
         self, input_dim: int, hidden_dim: int,
-        fc: bool = True, mix: bool = True
+        dropout: float, mix: bool = True
     ):
         super().__init__()
+        self.input_dim = input_dim
         self.hidden_dim = hidden_dim
-        self.fc = fc
         self.mix = mix
-        if fc:
-            self.linear = nn.Linear(hidden_dim, hidden_dim)
-            self.norm = Dyt(hidden_dim)
-        if mix:
-            self.mixer = nn.Linear(hidden_dim + input_dim, hidden_dim)
+        self.hidden = None
+
+        self.linear = nn.Linear(hidden_dim, hidden_dim)
+        self.norm = Dyt(hidden_dim)
+        self.dropout = nn.Dropout1d(dropout)  # 只在hidden_dim上dropout
         self.slstm = snn.SLSTM(
             input_size=input_dim,
             hidden_size=hidden_dim,
@@ -27,56 +27,63 @@ class SpikingLayer(nn.Module):
             init_hidden=False,
         )
 
-    def forward(self, x, syn=None, mem=None):
-        """
-        1. 序列处理（训练）:  x.shape = (B, S, D)
-        2. 单步处理 (推理):  x.shape = (B, D)
-        """
-        if x.dim() == 3:
-            return self._forward_seq(x, syn, mem)
-        elif x.dim() == 2:
-            return self._forward_step(x, syn, mem)
-        else:
-            ValueError("input dimension should be 2 or 3 (single step or a whole sequence)")
+        if mix:
+            self.mixer = nn.Linear(hidden_dim + input_dim, hidden_dim)
 
-    def _forward_seq(self, x, syn=None, mem=None):
-        """一次处理整个序列 (batch, seq_len, input_dim)"""
+    def init_hidden(
+        self, batch_size: int, device: torch.device,
+        syn_init: torch.tensor = None, mem_init: torch.tensor = None,
+    ) -> None:
+        # syn: synaptic, mem: membrane 分别对应传统LSTM当中的cell_state和hidden_state
+        syn = torch.zeros(batch_size, self.hidden_dim, device=device) if syn_init is None else syn_init
+        mem = torch.zeros(batch_size, self.hidden_dim, device=device) if mem_init is None else mem_init
+        self.hidden = (syn, mem)
+        return
+
+    def _forward_step(self, x: torch.tensor) -> torch.tensor:
+        syn, mem = self.hidden
+        spk, syn, mem = self.slstm(x, syn, mem)
+        # 更新隐藏状态
+        self.hidden = (syn, mem)
+
+        out = self.norm(self.mixer(torch.cat([self.linear(spk), x], dim=-1))) if self.mix \
+            else self.norm(self.linear(spk))
+        return self.dropout(out)
+
+    def _forward_seq(self, x: torch.tensor) -> torch.tensor:
+        # 预分配输出张量
         B, S, _ = x.shape
-        # 为张量预分配内存
         spks = torch.zeros(B, S, self.hidden_dim, device=x.device)
-        # 初始化隐藏状态
-        syn = torch.zeros(B, self.hidden_dim, device=x.device) \
-            if syn is None else syn
-        mem = torch.zeros(B, self.hidden_dim, device=x.device) \
-            if mem is None else mem
 
+        syn, mem = self.hidden
         for step in range(S):
             spk, syn, mem = self.slstm(x[:, step, :], syn, mem)
             spks[:, step, :] = spk
 
-        # 返回每一个时间步的输出和隐藏状态
-        if self.fc:
-            outs = self.norm(self.mixer(torch.cat([self.linear(spks), x], dim=-1))) \
-                if self.mix else self.norm(self.linear(spks))
-            return outs, syn, mem
-        else:
-            return spks, syn, mem
+        self.hidden = (syn, mem)
+        outputs = self.norm(self.mixer(torch.cat([self.linear(spks), x], dim=-1))) if self.mix \
+            else self.norm(self.linear(spks))
+        outputs = self.dropout(outputs.transpose(1, 2)).transpose(1, 2)
+        return outputs
 
-    def _forward_step(self, x, syn, mem):
-        """一次处理一个时间步 (batch, input_dim)"""
-        B, _ = x.shape
-        syn = torch.zeros(B, self.hidden_dim, device=x.device) \
-            if syn is None else syn
-        mem = torch.zeros(B, self.hidden_dim, device=x.device) \
-            if mem is None else mem
-
-        spk, syn, mem = self.slstm(x, syn, mem)
-        if self.fc:
-            out = self.norm(self.mixer(torch.cat([self.linear(spk), x], dim=-1))) \
-                if self.mix else self.norm(self.linear(spk))
-            return out, syn, mem
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """
+        1. 序列处理 (训练):  x.shape = (B, S, D)
+        2. 单步处理 (推理):  x.shape = (B, D)
+        """
+        # 初始化隐藏状态
+        if self.hidden is None:
+            self.init_hidden(x.size(0), x.device)
+        if x.dim() == 3:
+            return self._forward_seq(x)
+        elif x.dim() == 2:
+            return self._forward_step(x)
         else:
-            return spk, syn, mem
+            ValueError("输入维度必须为2(单步)或3(序列)")
+
+    def reset(self) -> None:
+        self.hidden = None
+        return
 
 
 class SpikingEncoder(nn.Module):
@@ -85,6 +92,7 @@ class SpikingEncoder(nn.Module):
         embedding_dim: int, vocab_size: int,
         hidden_dim: int, num_layers: int,
         bidirectional: bool,
+        dropout: float,
     ):
         super().__init__()
         self.embedding_dim = embedding_dim
@@ -95,6 +103,10 @@ class SpikingEncoder(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
         self.norm = Dyt(embedding_dim)
         self.layers = nn.ModuleList()
+        if bidirectional:
+            self.syn_fc = nn.Linear(hidden_dim * 2, hidden_dim)
+            self.mem_fc = nn.Linear(hidden_dim * 2, hidden_dim)
+            self.output_fc = nn.Linear(hidden_dim * 2, hidden_dim)
 
         for i in range(num_layers):
             if bidirectional:
@@ -102,11 +114,11 @@ class SpikingEncoder(nn.Module):
                     nn.ModuleDict({
                         "f_layer": SpikingLayer(
                             embedding_dim if i == 0 else hidden_dim,
-                            hidden_dim,
+                            hidden_dim, dropout
                         ),
                         "b_layer": SpikingLayer(
                             embedding_dim if i == 0 else hidden_dim,
-                            hidden_dim,
+                            hidden_dim, dropout
                         ),
                     })
                 )
@@ -114,56 +126,78 @@ class SpikingEncoder(nn.Module):
                 self.layers.append(
                     SpikingLayer(
                         embedding_dim if i == 0 else hidden_dim,
-                        hidden_dim,
+                        hidden_dim, dropout
                     )
                 )
 
-    def forward(self, src):
+    def forward(self, src: torch.tensor) -> tuple[list[torch.tensor], list[torch.tensor], list[torch.tensor]]:
         src = self.norm(self.embedding(src))
         f_out = src
         b_out = torch.flip(src, dims=[1]) if self.bidirectional else None
+        # 每层的输出和隐藏状态
         outputs, syns, mems = [], [], []
 
-        for layer in self.layers:
+        for _, layer in enumerate(self.layers):
             if self.bidirectional:
                 # 前向层
-                f_out, f_syn, f_mem = layer["f_layer"](f_out)
+                f_out = layer["f_layer"](f_out)
+                f_syn, f_mem = layer["f_layer"].hidden
                 # 后向层
-                b_out, b_syn, b_mem = layer["b_layer"](b_out)
-                syn = torch.cat([f_syn, b_syn], dim=-1)
-                mem = torch.cat([f_mem, b_mem], dim=-1)  # [batch_size, hidden_dim * 2]
-                # 重新翻转b_out对齐时间步，并拼接f_out得到最后的输出
-                output = torch.cat([f_out, torch.flip(b_out, dims=[1])], dim=-1)  # [batch_size, seq_len, hidden_dim * 2]
+                b_out = layer["b_layer"](b_out)
+                b_syn, b_mem = layer["b_layer"].hidden
+                # 前后隐藏状态拼接后维度转换得到最终的隐藏状态
+                syn = self.syn_fc(torch.cat([f_syn, b_syn], dim=-1))
+                mem = self.mem_fc(torch.cat([f_mem, b_mem], dim=-1))
+                # 重新翻转b_out对齐时间步，并拼接转换后得到最后的输出
+                output = self.output_fc(torch.cat([f_out, torch.flip(b_out, dims=[1])], dim=-1))
             else:
-                f_out, syn, mem = layer(f_out)
+                f_out = layer(f_out)
+                syn, mem = layer.hidden
                 output = f_out
-            syns.append(syn)  # 返回包含每一层最后一个时间步的隐藏状态的列表
+            syns.append(syn)
             mems.append(mem)
             outputs.append(output)
+        # 返回每一层最后一步输出和隐藏状态的列表
         return outputs, syns, mems
+
+    def reset(self) -> None:
+        for layer in self.layers:
+            if self.bidirectional:
+                layer["f_layer"].reset()
+                layer["b_layer"].reset()
+            else:
+                layer.reset()
+        return
 
 
 class Attention(nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, hidden_dim: int):
         super().__init__()
-        self.attn = nn.Linear(hidden_dim * 2, hidden_dim)
-        self.v = nn.Linear(hidden_dim, 1)
+        self.q_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.k_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.v_proj = nn.Linear(hidden_dim, hidden_dim)
         self.norm = Dyt(hidden_dim)
 
-    def forward(self, decoder_hidden, encoder_output):
-        """
-        decoder_hidden:     [B, H]
-        encoder_outputs:    [B, S, H]
-        returns:
-            context:        [B, H]
-            attn_weights:   [B, S]
-        """
-        src_len = encoder_output.size(1)
-        decoder_hidden = decoder_hidden.unsqueeze(1).repeat(1, src_len, 1)
-        energy = torch.tanh(self.attn(torch.cat((decoder_hidden, encoder_output), dim=2)))
-        attn_weights = torch.softmax(self.v(energy).squeeze(2), dim=1)
-        context = torch.bmm(attn_weights.unsqueeze(1), encoder_output).squeeze(1)
-        return self.norm(context), attn_weights
+    def forward(
+        self, decoder_hidden_state: torch.Tensor,
+        encoder_outputs: torch.Tensor
+    ) -> tuple[torch.tensor, torch.tensor]:
+        # 投影生成Query, Key, Value
+        query = self.q_proj(decoder_hidden_state)  # [B, H]
+        key = self.k_proj(encoder_outputs)           # [B, S, H]
+        value = self.v_proj(encoder_outputs)       # [B, S, H]
+        # 计算Query与所有Key的点积，得到注意力logits
+        # [B, 1, H] x [B, H, S] -> [B, 1, S]
+        energy = torch.bmm(query.unsqueeze(1), key.transpose(1, 2))
+        energy = energy.squeeze(1)  # [B, S]
+        # 缩放点积（防止数值不稳定）
+        d_k = query.size(-1)
+        attention_weights = torch.nn.functional.softmax(energy / d_k**0.5, dim=1)
+        # 根据注意力权重加权聚合Value
+        context_vector = torch.bmm(attention_weights.unsqueeze(1), value).squeeze(1)  # [B, H]
+        # 归一化context
+        context_vector = self.norm(context_vector)
+        return context_vector, attention_weights
 
 
 class SpikingDecoder(nn.Module):
@@ -171,6 +205,7 @@ class SpikingDecoder(nn.Module):
         self, padding_idx: int,
         embedding_dim: int, vocab_size: int,
         hidden_dim: int, num_layers: int,
+        dropout: float,
     ):
         super().__init__()
         self.embedding_dim = embedding_dim
@@ -179,60 +214,73 @@ class SpikingDecoder(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
         self.norm = Dyt(embedding_dim)
-        self.layers = nn.ModuleList([
-            SpikingLayer(
-                embedding_dim + hidden_dim if i == 0 else hidden_dim + hidden_dim,
-                hidden_dim, fc=(i < num_layers - 1)
-            ) for i in range(num_layers)
-        ])
-        self.attention = nn.ModuleList([Attention(hidden_dim) for i in range(num_layers)])
-        self.hidden = None
+        self.layers = nn.ModuleList()
 
-    def _init_hidden(self, encoder_syns, encoder_mems):
+        for i in range(num_layers):
+            self.layers.append(
+                nn.ModuleDict({
+                    "attention": Attention(hidden_dim),
+                    "spiking": SpikingLayer(
+                        embedding_dim + hidden_dim if i == 0 else hidden_dim + hidden_dim,
+                        hidden_dim, dropout
+                    )
+                })
+            )
+
+    def init_hidden(
+        self, batch_size: int, device: torch.device,
+        encoder_syns: torch.tensor, encoder_mems: torch.tensor
+    ) -> None:
         """
-        Initialize hidden states from encoder's hidden states.
-        Assumes one layer per encoder and decoder.
+        使用编码器每一层的最后一步的syn, mem初始化解码器每一层最开始syn, mem
         """
-        self.hidden = []
-        for i in range(self.num_layers):
-            # Use last step of encoder's i-th layer
-            syn = encoder_syns[i]  # [B, H]
-            mem = encoder_mems[i]  # [B, H]
-            self.hidden.append((syn, mem))
+        for i, layer in enumerate(self.layers):
+            layer["spiking"].init_hidden(batch_size, device, encoder_syns[i], encoder_mems[i])
 
-    def forward(self, tgt, encoder_outputs, encoder_syns, encoder_mems):
-        self._init_hidden(encoder_syns, encoder_mems)
-        tgt = self.norm(self.embedding(tgt))
-        if tgt.dim() == 3:
-            return self._forward_seq(tgt, encoder_outputs)
-        elif tgt.dim() == 2:
-            return self._forward_step(tgt, encoder_outputs)
-        else:
-            raise ValueError("Input dimension should be 2 or 3 (single step or a whole sequence)")
-
-    def _forward_step(self, tgt, encoder_outputs):
+    def _forward_step(self, tgt: torch.tensor) -> torch.tensor:
         """
         Process one time step using attention and current hidden states.
         """
-        for i in range(self.num_layers):
-            # Get decoder's first layer hidden state
-            syn, mem = self.hidden[i]
-            context, _ = self.attention[i](mem, encoder_outputs[i])  # [B, H]
-            # Combine input with context
+        for i, layer in enumerate(self.layers):
+            # 获取编码器隐藏层状态
+            _, mem = layer["spiking"].hidden
+            # 计算attention context
+            context, _ = layer["attention"](mem, self.encoder_outputs[i])  # [B, H]
+            # 拼接输入
             output = torch.cat((tgt, context), dim=-1)  # 第一层[B, E + H] 后续层[B, H + H]
-            output, new_syn, new_mem = self.layers[i]._forward_step(output, syn, mem)
+            output = layer["spiking"](output)
             tgt = output
-            self.hidden[i] = (new_syn, new_mem)
         return output
 
-    def _forward_seq(self, tgt, encoder_outputs):
+    def _forward_seq(self, tgt: torch.tensor) -> torch.tensor:
         B, S, _ = tgt.shape
         outputs = torch.zeros(B, S, self.hidden_dim, device=tgt.device)
         for step in range(S):
-            output = self._forward_step(tgt[:, step, :], encoder_outputs)
+            output = self._forward_step(tgt[:, step, :])
             outputs[:, step, :] = output
-
         return outputs
+
+    def forward(
+        self, tgt: torch.tensor, encoder_outputs: list[torch.tensor],
+        encoder_syns: list[torch.tensor], encoder_mems: list[torch.tensor]
+    ) -> torch.tensor:
+        B = tgt.size(0)
+        device = tgt.device
+        self.encoder_outputs = encoder_outputs
+        if self.layers[0]["spiking"].hidden is None:
+            self.init_hidden(B, device, encoder_syns, encoder_mems)
+
+        tgt = self.norm(self.embedding(tgt))
+        if tgt.dim() == 3:
+            return self._forward_seq(tgt)
+        elif tgt.dim() == 2:
+            return self._forward_step(tgt)
+        else:
+            ValueError("输入维度必须为2(单步)或3(序列)")
+    
+    def reset(self) -> None:
+        for layer in self.layers:
+            layer["spiking"].reset()
 
 
 class SpikingParrot(nn.Module):
@@ -241,6 +289,7 @@ class SpikingParrot(nn.Module):
         embedding_dim: int, vocab_size: int,
         hidden_dim: int, num_layers: int,
         bidirectional: bool,
+        dropout: float,
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -248,29 +297,36 @@ class SpikingParrot(nn.Module):
 
         self.encoder = SpikingEncoder(
             padding_idx, embedding_dim, vocab_size,
-            hidden_dim, num_layers, bidirectional
+            hidden_dim, num_layers, bidirectional,
+            dropout,
         )
         self.decoder = SpikingDecoder(
             padding_idx, embedding_dim, vocab_size,
-            hidden_dim * 2 if bidirectional else hidden_dim, num_layers
+            hidden_dim, num_layers,
+            dropout,
         )
-        self.fc = nn.Linear(hidden_dim * 2 if bidirectional else hidden_dim, vocab_size)
+        self.fc = nn.Linear(hidden_dim, vocab_size)
 
-    def forward(self, src, tgt):
+    def forward(self, src: torch.tensor, tgt: torch.tensor) -> torch.tensor:
         encoder_outputs, encoder_syns, encoder_mems = self.encoder(src)
         outputs = self.decoder(tgt, encoder_outputs, encoder_syns, encoder_mems)
         return self.fc(outputs)
 
-    def greedy_decode(self, src, bos_token_id, eos_token_id, max_length=32):
+    def reset(self) -> None:
+        self.encoder.reset()
+        self.decoder.reset()
+
+    def greedy_decode(
+        self, src: torch.tensor,
+        bos_token_id: int, eos_token_id: int, max_length: int
+    ) -> list:
         batch_size, _ = src.shape
         device = src.device
-        _, syns, mems = self.encoder(src)
+        outputs, syns, mems = self.encoder(src)
         input_ids = torch.full((batch_size, 1), bos_token_id, dtype=torch.long, device=device)
-        for _ in range(max_length - 1):
+        for _ in range(max_length):
             current_input = input_ids[:, -1]
-            embedded = self.decoder.embedding(current_input)
-            embedded = self.decoder.norm(embedded)
-            output, syns, mems = self.decoder._forward_step(embedded, syns, mems)
+            output = self.decoder.forward(current_input, outputs, syns, mems)
             logits = self.fc(output)
             next_tokens = torch.argmax(torch.log_softmax(logits, dim=-1), dim=-1).unsqueeze(1)
             input_ids = torch.cat([input_ids, next_tokens], dim=1)
@@ -284,4 +340,5 @@ class SpikingParrot(nn.Module):
             except ValueError:
                 pass
             sequences.append(seq_list)
+        self.reset()
         return sequences
