@@ -2,7 +2,19 @@ import torch
 import torch.nn as nn
 
 
-class SDyt(torch.autograd.Function):
+class Dyt(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.input_size = input_size
+        self.alpha = nn.Parameter(torch.ones(input_size))
+        self.gamma = nn.Parameter(torch.ones(input_size))
+        self.beta = nn.Parameter(torch.zeros(input_size))
+    
+    def forward(self, x):
+        return self.gamma * torch.tanh(self.alpha * x) + self.beta
+
+
+class Surrogate_Dyt(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, alpha, gamma):
         ctx.save_for_backward(x, alpha, gamma)
@@ -23,7 +35,7 @@ class SDyt(torch.autograd.Function):
         return grad_x, grad_alpha, grad_gamma
 
 
-class sdyt(nn.Module):
+class surrogate_dyt(nn.Module):
     def __init__(self, input_size):
         super().__init__()
         self.input_size = input_size
@@ -32,4 +44,4 @@ class sdyt(nn.Module):
     
     def forward(self, x):
         # 确保alpha和gamma与x的最后一维对齐（例如input_size）
-        return SDyt.apply(x, self.alpha, self.gamma)
+        return Surrogate_Dyt.apply(x, self.alpha, self.gamma)

@@ -22,12 +22,12 @@ def main():
     en_tokenizer = load_tokenizer("model/tokenizers/en")
     zh_tokenizer = load_tokenizer("model/tokenizers/zh")
 
-    checkpoint = torch.load("model/checkpoints/epoch_004.pt", map_location='cpu')
+    checkpoint = torch.load("model/checkpoints/epoch_002.pt", map_location='cpu')
     config = checkpoint['config']
     config['padding_idx'] = zh_tokenizer.pad_token_id
     config['vocab_size'] = zh_tokenizer.vocab_size
 
-    model = load_model("model/checkpoints/epoch_004.pt", config)
+    model = load_model("model/checkpoints/epoch_002.pt", config)
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)

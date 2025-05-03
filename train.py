@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 TRAINING_CONFIG = {
     # parameter config
-    "batch_size": 449,
+    "batch_size": 601,
     "src_max_length": 48,
     "tgt_max_length": 48,
     
@@ -33,6 +33,7 @@ TRAINING_CONFIG = {
     "grad_clip": 1.0,
     "label_smoothing": 0.01,
     "num_workers": 8,
+    "teacher_forcing_ratio": 0.8,
     
     # lr scheduler config
     "scheduler_eta_min": 1e-6,
@@ -115,12 +116,13 @@ def train(config):
     # init the model
     model = SpikingParrot(
         padding_idx=zh_tokenizer.pad_token_id,
-        vocab_size=zh_tokenizer.vocab_size,
+        vocab_size=zh_tokenizer.vocab_size,  # 中英文词表大小相同
         embedding_dim=config["embedding_dim"],
         hidden_dim=config["hidden_dim"],
         num_layers=config["num_layers"],
         bidirectional=config["bidirectional"],
         dropout=config["dropout"],
+        teacher_forcing_ratio=config["teacher_forcing_ratio"],
     ).to(device)
 
     # optimizer config
@@ -182,6 +184,13 @@ def train(config):
 
             # grad norm and clip
             scaler.scale(loss).backward()
+
+            # for name, param in model.named_parameters():
+            #     if param.grad is None:
+            #         print(f"参数 {name} 无梯度")
+            #     else:
+            #         print(f"参数 {name} 梯度正常")
+            
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(
                 model.parameters(),
@@ -192,7 +201,6 @@ def train(config):
             scaler.step(optimizer)
             scaler.update()
 
-            model.reset()
             optimizer.zero_grad()
 
             # performance eval
