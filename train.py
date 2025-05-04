@@ -143,41 +143,19 @@ def train(config):
     valid_dir = "data/corpus/parquet/valid/validation-00000-of-00001.parquet"
     valid_cache_dir = "data/cache/valid"
 
-    valid_dataset = MyDataset(
-        en_tokenizer_dir=en_tokenizer_dir,
-        zh_tokenizer_dir=zh_tokenizer_dir,
-        parquet_file=valid_dir,
-        cache_dir=valid_cache_dir,
-        src_max_length=config["src_max_length"],
-        tgt_max_length=config["tgt_max_length"],
-        num_workers=config["num_workers"],
-    )
-
-    valid_dataloader = DataLoader(
-        valid_dataset,
-        batch_size=config["batch_size"],
-        shuffle=True,
-        collate_fn=partial(
-            collate_fn,
-            pad_token_id=zh_tokenizer.pad_token_id,
-            src_max_length=config["src_max_length"],
-            tgt_max_length=config["tgt_max_length"],
-        )
-    )
-
     # retrain after break
     start_epoch = 0
     if os.path.exists(config["checkpoint_dir"]):
         model, optimizer, scaler, scheduler, start_epoch = load_latest_checkpoint(
             model, optimizer, scaler, scheduler, config
         )
-    print(f"Start training from epoch {start_epoch + 1}")
+    print(f"Start training from epoch {start_epoch}")
 
     for epoch in range(start_epoch, config["epochs"]):
         # shuffle training dataset segment
         random.shuffle(parquet_files)
         for file_idx, parquet_file in enumerate(parquet_files):
-            print(f"\ntraining dataset {file_idx+1}/{len(parquet_files)}: {parquet_file}")
+            print(f"training dataset {file_idx+1}/{len(parquet_files)}: {os.path.basename(parquet_file)}")
             
             # load dataset
             train_dataset = MyDataset(
@@ -284,6 +262,27 @@ def train(config):
             scheduler.step()
             
             # validation eval
+            valid_dataset = MyDataset(
+                en_tokenizer_dir=en_tokenizer_dir,
+                zh_tokenizer_dir=zh_tokenizer_dir,
+                parquet_file=valid_dir,
+                cache_dir=valid_cache_dir,
+                src_max_length=config["src_max_length"],
+                tgt_max_length=config["tgt_max_length"],
+                num_workers=config["num_workers"],
+            )
+
+            valid_dataloader = DataLoader(
+                valid_dataset,
+                batch_size=config["batch_size"],
+                shuffle=True,
+                collate_fn=partial(
+                    collate_fn,
+                    pad_token_id=zh_tokenizer.pad_token_id,
+                    src_max_length=config["src_max_length"],
+                    tgt_max_length=config["tgt_max_length"],
+                )
+            )
             model.eval()
             total_loss = 0
             total_correct = 0
@@ -323,6 +322,9 @@ def train(config):
             avg_loss = total_loss / len(valid_dataloader.dataset)
             avg_acc = total_correct / total_valid_tokens if total_valid_tokens > 0 else 0.0
             print(f"Epoch {epoch:03d} | Training Segment {file_idx} | Validation | Loss: {avg_loss:.3f} | Acc: {avg_acc*100:.3f}%")
+            # manual delete dataset and dataloader for next run
+            del valid_dataset, valid_dataloader
+            gc.collect()
 
 
 if __name__ == "__main__":
