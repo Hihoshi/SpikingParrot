@@ -9,7 +9,7 @@ from tokenizers import (
 )
 from transformers import PreTrainedTokenizerFast
 import os
-
+import jieba
 
 SPECIAL_TOKENS = {
     "pad_token": "[PAD]",
@@ -93,13 +93,13 @@ def load_tokenizer(path: str):
 
 if __name__ == "__main__":
     en_tokenizer = create_tokenizer(
-        corpus_path="data/corpus.en",
+        corpus_path="data/corpus/corpus.en",
         save_dir="model/tokenizers/en",
         language="en",
         vocab_size=16384,
     )
     zh_tokenizer = create_tokenizer(
-        corpus_path="data/corpus.zh",
+        corpus_path="data/corpus/corpus.zh",
         save_dir="model/tokenizers/zh",
         language="zh",
         vocab_size=16384,
@@ -116,6 +116,8 @@ if __name__ == "__main__":
 
     # 测试中文处理
     zh_text = "到目前为止你认为你读过多少书？"
+    jieba.initialize()
+    zh_text = " ".join(jieba.lcut(zh_text))
     zh_encoding = zh_tokenizer(zh_text)
     print("zh encoding:", zh_encoding.tokens())
     print("zh decoding:", zh_tokenizer.decode(zh_encoding.input_ids))
