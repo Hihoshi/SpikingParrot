@@ -35,7 +35,7 @@ class MyDataset(Dataset):
         
         # 检查缓存
         if os.path.exists(self.cache_path):
-            print(f"Loading cached data: {self.cache_path}")
+            print(f"Loading cached data: {os.path.basename(self.cache_path)}")
             with gzip.open(self.cache_path, 'rb') as f:
                 self.processed_data = pickle.load(f)
         else:
