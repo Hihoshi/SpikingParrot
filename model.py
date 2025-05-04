@@ -284,7 +284,7 @@ class SpikingParrot(nn.Module):
         hidden_dim: int, num_layers: int,
         bidirectional: bool,
         dropout: float,
-        teacher_forcing_ratio: float,
+        teacher_forcing_ratio: float = 0.8,
     ):
         super().__init__()
         self.num_layers = num_layers
