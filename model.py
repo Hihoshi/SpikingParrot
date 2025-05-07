@@ -55,9 +55,8 @@ class SpikingLayer(nn.Module):
     def _forward_seq(self, x: torch.tensor) -> torch.tensor:
         B, S, _ = x.shape
         spks = torch.zeros(B, S, self.hidden_dim, device=x.device)
-
         for step in range(S):
-            spk, self.syn, self.mem = self.slstm(x[:, step, :], self.syn, self.mem)
+            spk, self.syn, self.mem = self.slstm(x[:, step, :], self.syn.clone(), self.mem.clone())
             spks[:, step, :] = spk
 
         if self.mix:
@@ -190,7 +189,7 @@ class SpikingDecoder(nn.Module):
         self, padding_idx: int,
         embedding_dim: int, vocab_size: int,
         hidden_dim: int, num_layers: int,
-        dropout: float, teacher_forcing_ratio: float,
+        dropout: float,
     ):
         super().__init__()
         self.vocab_size = vocab_size
@@ -198,7 +197,6 @@ class SpikingDecoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.initialized = False
-        self.teacher_forcing_ratio = teacher_forcing_ratio
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
         self.norm = Dyt(embedding_dim)
@@ -220,8 +218,8 @@ class SpikingDecoder(nn.Module):
         for i, layer in enumerate(self.layers):
             layer["spiking"].init_hidden(
                 batch_size, device,
-                encoder_syns[i].clone(),
-                encoder_mems[i].clone(),
+                encoder_syns[i],
+                encoder_mems[i],
             )
         self.initialized = True
 
@@ -235,29 +233,31 @@ class SpikingDecoder(nn.Module):
             context = layer["attention"](mem, encoder_outputs[i])
             next_tgt = torch.cat((output, context), dim=-1)
             tgt = next_tgt
-        return self.fc(tgt)
+        return tgt
 
     def _forward_seq(
         self, tgt: torch.Tensor,
         encoder_outputs: list[torch.Tensor],
+        teacher_forcing_ratio: float,
     ) -> torch.Tensor:
         B, S, _ = tgt.shape
         device = tgt.device
-        outputs = torch.zeros(B, S, self.vocab_size, device=device)
+        outputs = torch.zeros(B, S, self.hidden_dim * 2, device=device)
         for step in range(S):
-            if random.random() > self.teacher_forcing_ratio and step != 0:
-                input_id = torch.argmax(outputs[:, step - 1, :], dim=-1)
-                previous_tgt = self.norm(self.embedding(input_id))
-                outputs[:, step, :] = self._forward_step(previous_tgt, encoder_outputs)
-            else:
+            if step == 0 or random.random() < teacher_forcing_ratio:
                 outputs[:, step, :] = self._forward_step(tgt[:, step, :], encoder_outputs)
-        return outputs
+            else:
+                input_id = torch.argmax(self.fc(outputs[:, step - 1, :]).detach(), dim=-1)
+                previous_tgt = self.norm(self.embedding(input_id.detach()))
+                outputs[:, step, :] = self._forward_step(previous_tgt, encoder_outputs)
+        return self.fc(outputs)
 
     def forward(
         self, tgt: torch.Tensor,
         encoder_outputs: list[torch.Tensor],
         encoder_syns: list[torch.Tensor],
-        encoder_mems: list[torch.Tensor]
+        encoder_mems: list[torch.Tensor],
+        teacher_forcing_ratio: float,
     ) -> torch.Tensor:
         B = tgt.size(0)
         device = tgt.device
@@ -265,9 +265,9 @@ class SpikingDecoder(nn.Module):
             self.init_hidden(B, device, encoder_syns, encoder_mems)
         tgt = self.norm(self.embedding(tgt))
         if tgt.dim() == 3:
-            return self._forward_seq(tgt, encoder_outputs)
+            return self._forward_seq(tgt, encoder_outputs, teacher_forcing_ratio)
         elif tgt.dim() == 2:
-            return self._forward_step(tgt, encoder_outputs)
+            return self.fc(self._forward_step(tgt, encoder_outputs))
         else:
             raise ValueError("输入维度必须为2(单步)或3(序列)")
 
@@ -284,7 +284,6 @@ class SpikingParrot(nn.Module):
         hidden_dim: int, num_layers: int,
         bidirectional: bool,
         dropout: float,
-        teacher_forcing_ratio: float = 0.8,
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -299,13 +298,19 @@ class SpikingParrot(nn.Module):
             padding_idx, embedding_dim, vocab_size,
             hidden_dim, num_layers,
             dropout,
-            teacher_forcing_ratio,
         )
 
-    def forward(self, src: torch.tensor, tgt: torch.tensor) -> torch.tensor:
+    def forward(
+        self, src: torch.tensor, tgt: torch.tensor,
+        teacher_forcing_ratio: float = 0.0
+    ) -> torch.tensor:
         self.reset()
         encoder_outputs, encoder_syns, encoder_mems = self.encoder(src)
-        outputs = self.decoder(tgt, encoder_outputs, encoder_syns, encoder_mems)
+        outputs = self.decoder(
+            tgt, encoder_outputs,
+            encoder_syns, encoder_mems,
+            teacher_forcing_ratio
+        )
         return outputs
 
     def reset(self) -> None:
@@ -322,19 +327,19 @@ class SpikingParrot(nn.Module):
         with torch.no_grad():
             encoder_outputs, encoder_syns, encoder_mems = self.encoder(src)
 
-        input_ids = torch.full(
-            (B, 1), bos_token_id,
-            dtype=torch.long, device=device
-        )
-
-        for _ in range(max_length):
-            current_input = input_ids[:, -1]
-            output = self.decoder.forward(
-                current_input, encoder_outputs,
-                encoder_syns, encoder_mems
+            input_ids = torch.full(
+                (B, 1), bos_token_id,
+                dtype=torch.long, device=device
             )
-            next_tokens = torch.argmax(output, dim=-1).unsqueeze(1)
-            input_ids = torch.cat([input_ids, next_tokens], dim=1)
+
+            for _ in range(max_length):
+                current_input = input_ids[:, -1]
+                output = self.decoder(
+                    current_input, encoder_outputs,
+                    encoder_syns, encoder_mems
+                )
+                next_tokens = torch.argmax(output, dim=-1)
+                input_ids = torch.cat([input_ids, next_tokens], dim=1)
 
         sequences = []
         for seq in input_ids:
