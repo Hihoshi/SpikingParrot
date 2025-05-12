@@ -30,11 +30,10 @@ class MyDataset(Dataset):
         self.num_workers = num_workers
         self.zstd_level = zstd_level
 
-        file_hash = hashlib.md5(parquet_file.encode()).hexdigest()[:8]
+        file_hash = hashlib.md5(os.path.basename(parquet_file).encode()).hexdigest()[:8]
         cache_name = f"cached_{file_hash}_src{src_max_length}_tgt{tgt_max_length}.zst"
         self.cache_path = os.path.join(cache_dir, cache_name)
         if os.path.exists(self.cache_path):
-            print(f"Loading cached data: {os.path.basename(self.cache_path)}")
             with open(self.cache_path, 'rb') as f:
                 dctx = zstd.ZstdDecompressor()
                 with dctx.stream_reader(f) as reader:
@@ -179,8 +178,8 @@ def main():
     from functools import partial
     from mytokenizer import load_tokenizer
 
-    src_max_length = 48
-    tgt_max_length = 48
+    src_max_length = 64
+    tgt_max_length = 64
     en_tokenizer_dir = "model/tokenizers/en"
     zh_tokenizer_dir = "model/tokenizers/zh"
     zh_tokenizer = load_tokenizer(zh_tokenizer_dir)
@@ -222,7 +221,7 @@ def main():
     del valid_dataset, valid_dataloader
     gc.collect()
 
-    train_dir = "data/corpus/parquet/train_shuffled"
+    train_dir = "data/corpus/parquet/train"
     train_cache_dir = "data/cache/train"
 
     parquet_files = sorted(glob.glob(os.path.join(train_dir, "*.parquet")))
