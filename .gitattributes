@@ -1,1 +1,2 @@
-corpus.json filter=lfs diff=lfs merge=lfs -text
+best_model.pt filter=lfs diff=lfs merge=lfs -text
+best_checkpoint.pt filter=lfs diff=lfs merge=lfs -text
