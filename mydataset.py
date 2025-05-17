@@ -178,8 +178,8 @@ def main():
     from functools import partial
     from mytokenizer import load_tokenizer
 
-    src_max_length = 64
-    tgt_max_length = 64
+    src_max_length = 48
+    tgt_max_length = 48
     en_tokenizer_dir = "model/tokenizers/en"
     zh_tokenizer_dir = "model/tokenizers/zh"
     zh_tokenizer = load_tokenizer(zh_tokenizer_dir)
