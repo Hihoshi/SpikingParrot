@@ -1,13 +1,10 @@
 # SpikingParrot
 
-从零开始，从数据集处理到一个完整的使用脉冲神经网络的英译中翻译模型
+从零开始，从数据集处理到一个完整的使用脉冲神经网络的Seq2Seq英译中翻译模型
 
 使用SpikingLSTM替换常规LSTM，实现了bislstm的编码器和Luong attention + unislstm的解码器
 
 模型文件大小约320MB，以batch size=128推理时显存仅占用1G，最好的检查点BLEU达到37.8
-
-
-
 
 ## 运行
 
@@ -19,10 +16,9 @@
 pip install gzip pandas pyarrow jieba transformers tokenizers snntorch tqdm sacrebleu
 ```
 
-
 ### 准备数据
 
-https://huggingface.co/datasets/wmt/wmt19
+`https://huggingface.co/datasets/wmt/wmt19`
 
 下载zh-en数据集文件:
 
@@ -37,26 +33,17 @@ https://huggingface.co/datasets/wmt/wmt19
 
    需要先合并训练数据，打乱内部句子顺序后保存，这里重新切分为16个切片便于后续训练
 
-
-
-
 ### 训练分词器（tokenizer）
 
 运行`mytokenizer.py`，训练分词器
 
 分词器文件保存在`model/tokenizers`
 
-
-
-
 ### 构建数据集
 
 运行`mydataset.py`
 
 初次运行会缓存分词好的数据在`data/cache/train`和`data/cache/valid`中
-
-
-
 
 ### 训练
 
@@ -72,15 +59,11 @@ https://huggingface.co/datasets/wmt/wmt19
 
 teacher forcing ratio 过低会造成训练崩溃，导致翻译文本失去逻辑
 
-
-
 ### 推理
 
 运行`inference.py`计算模型在验证集上BLEU值
 
 并写入翻译对照文本到`result/translation_comparison.txt`
-
-
 
 ### 文件结构
 
