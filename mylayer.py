@@ -44,7 +44,7 @@ class surrogate_dyt(nn.Module):
         self.gamma = nn.Parameter(torch.ones(input_size))
     
     def forward(self, x):
-        # ensure appha, gamma > 0
+        # ensure aplha, gamma > 0
         alpha = F.softplus(self.alpha)
         gamma = F.softplus(self.gamma)
         return Surrogate_Dyt.apply(x, alpha, gamma)
