@@ -45,4 +45,4 @@ def merge_shuffle_split_parquet(input_dir, output_dir, num_shards=16):
     print(f"successfully generate {num_shards} shards, total {len(shuffled_df)} samples")
 
 
-merge_shuffle_split_parquet("data/corpus/parquet/train", "data/corpus/parquet/train_shuffled", 16)
+merge_shuffle_split_parquet("data/corpus/parquet/train_origin", "data/corpus/parquet/train", 16)
