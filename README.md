@@ -25,7 +25,9 @@ pip install gzip pandas pyarrow jieba transformers tokenizers snntorch tqdm
 https://huggingface.co/datasets/wmt/wmt19
 
 下载zh-en数据集文件:
+
 `train-00000-of-00013.parquet` - `train-00012-of-00013.parquet`
+
 `validation-00000-of-00001.parquet`
 
 1. 运行`get_corpus.py`，分离中英文语料，用于 BPE Tokenizer 的训练，其中中文语料会用 jieba 进行预分词
