@@ -22,7 +22,7 @@ ZH_OUTPUT_PATH = os.path.join(OUTPUT_DIR, 'corpus.zh')
 
 
 def init_jieba():
-    jieba.disable_parallel()  # 禁用结巴内置并行
+    jieba.disable_parallel()
 
 
 def process_line(record):
@@ -102,7 +102,6 @@ def main():
     if len(all_en) != len(all_zh):
         logging.warning(f"Data length mismatch: {len(all_en)} English vs {len(all_zh)} Chinese sentences")
     
-    # 5. 写入最终文件
     logging.info(f"Writing {len(all_en)} sentences to final files")
     
     with open(EN_OUTPUT_PATH, 'w', encoding='utf-8') as f_en, \
