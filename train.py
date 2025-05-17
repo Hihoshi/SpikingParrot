@@ -26,32 +26,33 @@ CONFIG = {
     "checkpoint_dir": "model/checkpoints",
 
     # dataloader settings
-    "batch_size": 512,
-    "src_max_length": 32,
-    "tgt_max_length": 32,
+    "batch_size": 1024,
+    "src_max_length": 48,
+    "tgt_max_length": 48,
     "num_workers": 16,
 
     # model config
-    "embedding_dim": 1024,
-    "hidden_dim": 1024,
-    "num_layers": 2,
-    "dropout": 0.1,
+    "embedding_dim": 512,
+    "hidden_dim": 512,
+    "num_layers": 4,
+    "dropout": 0.0,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
 
     # optimizer and scheduler config
-    "epochs": 2,
-    "lr_eta_max": 3e-4,
-    "lr_eta_min": 3e-6,
-    "T_max": 512,
+    "epochs": 8,
+    "lr_eta_max": 1e-3,
+    "lr_eta_min": 1e-5,
+    "tf_eta_max": 0.8,
+    "tf_eta_min": 0.2,
+    "lr_T_max": 4096,
+    "tf_T_max": 2048,
     "betas": (0.9, 0.99),
     "weight_decay": 0.01,
-    "tf_eta_max": 0.5,
-    "tf_eta_min": 0.0,
 
     "label_smoothing": 0.1,
 
     # grad and precision
-    "use_amp": False,
+    "use_amp": True,
     "grad_clip": 1.0,
 
     # logging
@@ -64,52 +65,49 @@ if not train_parquets:
 CONFIG["train_parquets"] = train_parquets
 
 
-class CosineAnnealingDecayTF:
-    def __init__(self, eta_max: float, eta_min: float, T_max: int):
-        assert 0.0 <= eta_min < eta_max <= 1.0, "eta_min < eta_max and between [0, 1]"
-        assert T_max > 0, "T_max must over 0"
-
+class CosineAnnealingTFR:
+    def __init__(self, T_max, eta_max=1.0, eta_min=0.0, last_epoch=-1, verbose=False):
+        self.T_max = T_max
         self.eta_max = eta_max
         self.eta_min = eta_min
-        self.T_max = T_max
-        self.T_current = 0
+        self.verbose = verbose
+        self.last_epoch = last_epoch
+        
+        # 初始化状态
+        self.current_tfr = eta_max if last_epoch == -1 else self._compute_tfr(last_epoch)
+        if last_epoch == -1:
+            self.step(0)
 
-        self._eta_tf = self._compute_eta_tf()
+    def _compute_tfr(self, epoch):
+        cos = math.cos(math.pi * epoch / self.T_max)
+        return self.eta_min + (self.eta_max - self.eta_min) * (1 + cos) / 2
 
-    def _compute_eta_tf(self):
-        T = self.T_current % self.T_max
-        linear_decay = 1 - T / self.T_max
-        cosine_term = math.cos(math.pi / 2 * T) + 1
-        eta_tf = 0.5 * (self.eta_max - self.eta_min) * linear_decay * cosine_term + self.eta_min
-        return eta_tf
+    def step(self, epoch=None):
+        if epoch is not None:
+            self.last_epoch = epoch
+        else:
+            self.last_epoch += 1
+        
+        self.current_tfr = self._compute_tfr(self.last_epoch)
+        
+        if self.verbose:
+            print(f'Epoch {self.last_epoch:5d}: TFR adjusted to {self.current_tfr:.4f}')
 
-    def step(self):
-        self.T_current += 1
-        if self.T_current >= self.T_max:
-            self.T_current = 0
-        self._eta_tf = self._compute_eta_tf()
-
-    def get_ratio(self):
-        return self._eta_tf
+    def get_last_tfr(self):
+        return self.current_tfr
 
     def state_dict(self):
         return {
+            'T_max': self.T_max,
             'eta_max': self.eta_max,
             'eta_min': self.eta_min,
-            'T_max': self.T_max,
-            'T_current': self.T_current,
+            'last_epoch': self.last_epoch,
+            'verbose': self.verbose
         }
 
     def load_state_dict(self, state_dict):
-        self.eta_max = state_dict['eta_max']
-        self.eta_min = state_dict['eta_min']
-        self.T_max = state_dict['T_max']
-        self.T_current = state_dict['T_current']
-        self._eta_tf = self._compute_eta_tf()
-
-    def __repr__(self):
-        return (f'{self.__class__.__name__}(eta_max={self.eta_max}, eta_min={self.eta_min}, '
-                f'T_max={self.T_max}, T_current={self.T_current}, eta_tf={self._eta_tf:.6f})')
+        self.__dict__.update(state_dict)
+        self.current_tfr = self._compute_tfr(self.last_epoch)
 
 
 def setup_logger(log_file):
@@ -154,11 +152,12 @@ def save_checkpoint(model, optimizer, epoch, parquet_idx, loss, acc, scaler, lr_
         torch.save(model, os.path.join(config["checkpoint_dir"], f"model_{epoch:03d}.pt"))
         torch.save(checkpoint, os.path.join(config["checkpoint_dir"], f"checkpoint_{epoch:03d}.pt"))
     # save latest
-    torch.save(checkpoint, os.path.join(config["checkpoint_dir"], "latest.pt"))
+    torch.save(model, os.path.join(config["checkpoint_dir"], "latest_model.pt"))
+    torch.save(checkpoint, os.path.join(config["checkpoint_dir"], "latest_checkpoint.pt"))
 
 
 def load_latest_checkpoint(model, optimizer, scaler, lr_scheduler, tf_scheduler, config):
-    checkpoint_path = os.path.join(config["checkpoint_dir"], "latest.pt")
+    checkpoint_path = os.path.join(config["checkpoint_dir"], "latest_checkpoint.pt")
     if not os.path.exists(checkpoint_path):
         return model, optimizer, scaler, lr_scheduler, tf_scheduler, 0, 0, None
     
@@ -290,11 +289,11 @@ def train(config):
     )
     lr_scheduler = CosineAnnealingLR(
         optimizer,
-        T_max=config["T_max"],
+        T_max=config["lr_T_max"],
         eta_min=config["lr_eta_min"]
     )
-    tf_scheduler = CosineAnnealingDecayTF(
-        T_max=len(config["train_parquets"]),
+    tf_scheduler = CosineAnnealingTFR(
+        T_max=config["tf_T_max"],
         eta_max=config["tf_eta_max"],
         eta_min=config["tf_eta_min"]
     )
@@ -303,7 +302,7 @@ def train(config):
     # recover from checkpoint
     start_epoch = 0
     start_parquet_idx = 0
-    if os.path.exists(os.path.join(config["checkpoint_dir"], "latest.pt")):
+    if os.path.exists(os.path.join(config["checkpoint_dir"], "latest_checkpoint.pt")):
         model, optimizer, scaler, lr_scheduler, tf_scheduler, start_epoch, start_parquet_idx = load_latest_checkpoint(
             model, optimizer, scaler, lr_scheduler, tf_scheduler, config
         )
@@ -316,9 +315,6 @@ def train(config):
 
     # main train loop
     for epoch in range(start_epoch, config["epochs"]):
-        if epoch != 0:
-            random.shuffle(config["train_parquets"])
-        # train every parquet
         for parquet_idx in range(start_parquet_idx, len(config["train_parquets"])):
             parquet = config["train_parquets"][parquet_idx]
             logger.info(f"Processing {os.path.basename(parquet)} {parquet_idx+1}/{len(config['train_parquets'])}")
@@ -358,7 +354,7 @@ def train(config):
                 train_dataloader,
                 unit="batch",
                 colour="green",
-                desc=f"Epoch {epoch + 1} | Segment {parquet_idx + 1} | TF {tf_scheduler.get_ratio():.2e}",
+                desc=f"Epoch {epoch + 1} | Segment {parquet_idx + 1}",
                 bar_format='{l_bar}{bar:32}{r_bar}',
                 dynamic_ncols=True,
                 leave=False,
@@ -373,8 +369,8 @@ def train(config):
                 
                 # mixed precision
                 with autocast(enabled=config["use_amp"]):
-                    teacher_forcing_ratio = tf_scheduler.get_ratio()
-                    output = model(src, tgt, teacher_forcing_ratio)
+                    tfr = tf_scheduler.get_last_tfr()
+                    output = model(src, tgt, tfr)
                     loss = nn.CrossEntropyLoss(
                         ignore_index=zh_tokenizer.pad_token_id,
                         label_smoothing=config["label_smoothing"]
@@ -392,8 +388,9 @@ def train(config):
                 )
                 scaler.step(optimizer)
                 scaler.update()
-                # update lr_scheduler after a batch
+                # update scheduler after a batch
                 lr_scheduler.step()
+                tf_scheduler.step()
                 # preformance eval
                 with torch.no_grad():
                     preds = torch.argmax(output, dim=-1)
@@ -410,18 +407,17 @@ def train(config):
                         loss=f'{loss.item():.3f}',
                         acc=f'{(correct.float()/total_valid).item()*100:.3f}%' \
                             if total_valid > 0 else '0.000%',
-                        lr=f'{lr_scheduler.get_last_lr()[0]:.2e}'
+                        lr=f'{lr_scheduler.get_last_lr()[0]:.2e}',
+                        tf=f'{tf_scheduler.get_last_tfr():.2e}'
                     )
             
             # log parquet info
             avg_loss = total_loss / total_samples
             avg_acc = total_correct / total_valid_tokens if total_valid_tokens > 0 else 0.0
             logger.info(
-                f"Epoch: {epoch + 1} | Segment: {parquet_idx + 1} | TF: {tf_scheduler.get_ratio():.2e} | Loss: {avg_loss:.3f} | Acc: {avg_acc*100:.3f}%"
+                f"Epoch: {epoch + 1} | Segment: {parquet_idx + 1} | Loss: {avg_loss:.3f} | Acc: {avg_acc*100:.3f}%"
             )
 
-            # update tf_scheduler after a parquet
-            tf_scheduler.step()
             # save checkpoint after a parquet
             save_checkpoint(
                 model, optimizer, epoch, parquet_idx + 1,
@@ -436,6 +432,11 @@ def train(config):
             # validate after a parquet
             valid_loss, valid_acc = validate(model, zh_tokenizer, config)
             logger.info(f"Validation | Loss: {valid_loss:.3f} | Acc: {valid_acc*100:.3f}%")
+
+        # reset index and reshuffle
+        start_parquet_idx = 0
+        if epoch != 0:
+            random.shuffle(config["train_parquets"])
 
 
 if __name__ == "__main__":
