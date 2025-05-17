@@ -4,7 +4,7 @@
 
 使用SpikingLSTM替换常规LSTM，实现了bislstm的编码器和Luong attention + unislstm的解码器
 
-模型文件大小约320MB，最好的检查点模型BLEU达到37.78
+模型文件大小约320MB，以batch size-128推理时显存仅占用1G，最好的检查点BLEU达到37.8
 
 
 
@@ -16,7 +16,7 @@
 `pytorch2.1.2+cu121`
 
 ```bash
-pip install gzip pandas pyarrow jieba transformers tokenizers snntorch tqdm
+pip install gzip pandas pyarrow jieba transformers tokenizers snntorch tqdm sacrebleu
 ```
 
 
