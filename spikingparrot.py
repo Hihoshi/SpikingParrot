@@ -33,7 +33,7 @@ class SpikingLayer(nn.Module):
 
     def init_hidden(
         self, batch_size: int, device: torch.device,
-        syn_init: torch.Tensor = None, mem_init: torch.Tensor = None,
+        syn_init: torch.Tensor = None, mem_init: torch.Tensor = None
     ) -> None:
         syn = torch.zeros(batch_size, self.hidden_dim, device=device) \
             if syn_init is None else syn_init
@@ -46,7 +46,6 @@ class SpikingLayer(nn.Module):
     def _forward_step(self, x: torch.Tensor) -> torch.Tensor:
         spk, self.syn, self.mem = self.slstm(x, self.syn, self.mem)
         output = self.linear(spk)
-
         output = self.mixer(torch.cat((output, x), dim=-1))
 
         return self.dropout(self.norm(output))
@@ -59,9 +58,11 @@ class SpikingLayer(nn.Module):
             spks.append(spk)
             syns.append(self.syn)
             mems.append(self.mem)
+
         spks = torch.stack(spks, dim=1)
         syns = torch.stack(syns, dim=1)
         mems = torch.stack(mems, dim=1)
+
         outputs = self.linear(spks)
         outputs = self.mixer(torch.cat((outputs, x), dim=-1))
 
@@ -83,57 +84,6 @@ class SpikingLayer(nn.Module):
         self.initialized = False
 
 
-# class SpikingEncoder(nn.Module):
-#     def __init__(
-#         self, padding_idx: int,
-#         embedding_dim: int, vocab_size: int,
-#         hidden_dim: int, num_layers: int,
-#         dropout: float,
-#     ):
-#         super().__init__()
-#         self.embedding_dim = embedding_dim
-#         self.hidden_dim = hidden_dim
-#         self.num_layers = num_layers
-
-#         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
-#         self.norm = Dyt(embedding_dim)
-#         self.bislstm = nn.ModuleList()
-
-#         for i in range(num_layers):
-#             self.bislstm.append(
-#                 nn.ModuleDict({
-#                     "f": SpikingLayer(embedding_dim if i == 0 else hidden_dim, hidden_dim, dropout),
-#                     "b": SpikingLayer(embedding_dim if i == 0 else hidden_dim, hidden_dim, dropout),
-#                 })
-#             )
-
-#     def forward(self, src: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
-#         src = self.norm(self.embedding(src))
-#         f_out = src
-#         b_out = torch.flip(src.clone(), dims=[1])
-
-#         outputs, syns, mems = [], [], []
-#         for _, layer in enumerate(self.bislstm):
-#             f_out = layer["f"](f_out)
-#             b_out = layer["b"](b_out)
-#             f_syn, f_mem = layer["f"].syn, layer["f"].mem
-#             b_syn, b_mem = layer["b"].syn, layer["b"].mem
-
-#             syn = torch.cat((f_syn, b_syn), dim=-1)
-#             mem = torch.cat((f_mem, b_mem), dim=-1)
-#             output = torch.cat((f_out, torch.flip(b_out, dims=[1])), dim=-1)
-
-#             syns.append(syn)
-#             mems.append(mem)
-#             outputs.append(output)
-#         return outputs, syns, mems
-
-#     def reset(self) -> None:
-#         for layer in self.bislstm:
-#             layer["f"].reset()
-#             layer["b"].reset()
-
-
 class SpikingEncoder(nn.Module):
     def __init__(
         self, padding_idx: int,
@@ -145,65 +95,28 @@ class SpikingEncoder(nn.Module):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
-        self.initialized = False
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
         self.norm = Dyt(embedding_dim)
-        self.bislstm = nn.ModuleDict({
-            "f": SpikingLayer(embedding_dim, hidden_dim, dropout),
-            "b": SpikingLayer(embedding_dim, hidden_dim, dropout),
-        })
 
         self.layers = nn.ModuleList([
-            SpikingLayer(hidden_dim, hidden_dim, dropout) \
-            for _ in range(num_layers)
+            SpikingLayer(hidden_dim * 2 if i == 0 else hidden_dim, hidden_dim, dropout) \
+            for i in range(num_layers)
         ])
-
-        self.transform = nn.ModuleDict({
-            "syn_fc": nn.Linear(hidden_dim * 2, hidden_dim),
-            "mem_fc": nn.Linear(hidden_dim * 2, hidden_dim),
-            "output_fc": nn.Linear(hidden_dim * 2, hidden_dim),
-            "norm": Dyt(hidden_dim),
+        self.bislstm = nn.ModuleDict({
+            "f": SpikingLayer(embedding_dim, hidden_dim, dropout),
+            "b": SpikingLayer(embedding_dim, hidden_dim, dropout)
         })
 
-    def init_hidden(
-        self, batch_size: int, device: torch.device,
-        bi_syn: torch.Tensor, bi_mem: torch.Tensor
-    ) -> None:
-        for _, layer in enumerate(self.layers):
-            layer.init_hidden(
-                batch_size, device,
-                bi_syn,
-                bi_mem,
-            )
-        self.initialized = True
-
-    def forward(self, src: torch.Tensor) -> \
-            tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
+    def forward(self, src: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
         src = self.norm(self.embedding(src))
-        f_out = src
-        b_out = torch.flip(src.clone(), dims=[1])
-        f_out, _, _ = self.bislstm["f"](f_out)
-        b_out, _, _ = self.bislstm["b"](b_out)
-        f_syn, f_mem = self.bislstm["f"].syn, self.bislstm["f"].mem
-        b_syn, b_mem = self.bislstm["b"].syn, self.bislstm["b"].mem
-
-        bi_syn = torch.cat((f_syn, b_syn), dim=-1)
-        bi_syn = self.transform["syn_fc"](bi_syn)
-        bi_mem = torch.cat((f_mem, b_mem), dim=-1)
-        bi_mem = self.transform["mem_fc"](bi_mem)
-        output = torch.cat((f_out, torch.flip(b_out, dims=[1])), dim=-1)
-        output = self.transform["norm"](self.transform["output_fc"](output))
-
-        B = src.size(0)
-        device = src.device
-        if self.initialized is False:
-            self.init_hidden(B, device, bi_syn, bi_mem)
+        f_output, _, _ = self.bislstm["f"](src)
+        b_output, _, _ = self.bislstm["b"](torch.flip(src, dims=[1]))
+        output = torch.cat((f_output, torch.flip(b_output, dims=[1])), dim=-1)
 
         syns, mems = [], []
         for _, layer in enumerate(self.layers):
             output, syn, mem = layer(output)
-            # syn, mem = layer.syn, layer.mem
             syns.append(syn)
             mems.append(mem)
         return syns, mems
@@ -213,7 +126,6 @@ class SpikingEncoder(nn.Module):
         self.bislstm["b"].reset()
         for layer in self.layers:
             layer.reset()
-        self.initialized = False
 
 
 # general Luong attention
@@ -264,12 +176,12 @@ class SpikingDecoder(nn.Module):
             nn.ModuleDict({
                 "attention": Attention(hidden_dim, dropout),
                 "spiking": SpikingLayer(
-                    embedding_dim + hidden_dim if i == 0 else hidden_dim * 2,
+                    embedding_dim if i == 0 else hidden_dim * 2,
                     hidden_dim, dropout
                 )
             }) for i in range(num_layers)
         ])
-        self.fc = nn.Linear(hidden_dim, vocab_size)
+        self.fc = nn.Linear(hidden_dim * 2, vocab_size)
 
     def init_hidden(
         self, batch_size: int, device: torch.device,
@@ -288,10 +200,10 @@ class SpikingDecoder(nn.Module):
         encoder_mems: list[torch.Tensor],
     ) -> torch.Tensor:
         for i, layer in enumerate(self.layers):
+            output = layer["spiking"](inp)
             mem = layer["spiking"].mem
             context = layer["attention"](mem, encoder_mems[i])
-            inp = torch.cat((inp, context), dim=-1)
-            inp = layer["spiking"](inp)
+            inp = torch.cat((output, context), dim=-1)
         return inp
 
     def _forward_seq(
@@ -305,17 +217,17 @@ class SpikingDecoder(nn.Module):
             if step == 0 or random.random() < teacher_forcing_ratio:
                 outputs.append(self._forward_step(tgt[:, step, :], encoder_mems))
             else:
-                input_id = torch.argmax(self.fc(outputs[step - 1]).detach(), dim=-1)
-                previous_tgt = self.norm(self.embedding(input_id.detach()))
-                outputs.append(self._forward_step(previous_tgt, encoder_mems))
+                logits = torch.argmax(self.fc(outputs[-1].clone().detach()), dim=-1)
+                previous = self.norm(self.embedding(logits))
+                outputs.append(self._forward_step(previous, encoder_mems))
         outputs = torch.stack(outputs, dim=1)
-        return self.fc(outputs)
+        return outputs
 
     def forward(
         self, tgt: torch.Tensor,
         encoder_syns: list[torch.Tensor],
         encoder_mems: list[torch.Tensor],
-        teacher_forcing_ratio: float = 0.0,
+        teacher_forcing_ratio: float = 0.0
     ) -> torch.Tensor:
         B = tgt.size(0)
         device = tgt.device
@@ -323,7 +235,7 @@ class SpikingDecoder(nn.Module):
             self.init_hidden(B, device, encoder_syns, encoder_mems)
         tgt = self.norm(self.embedding(tgt))
         if tgt.dim() == 3:
-            return self._forward_seq(tgt, encoder_mems, teacher_forcing_ratio)
+            return self.fc(self._forward_seq(tgt, encoder_mems, teacher_forcing_ratio))
         elif tgt.dim() == 2:
             return self.fc(self._forward_step(tgt, encoder_mems))
         else:
@@ -382,7 +294,7 @@ class SpikingParrot(nn.Module):
         self.reset()
 
         with torch.no_grad():
-            encoder_outputs, encoder_syns, encoder_mems = self.encoder(src)
+            encoder_syns, encoder_mems = self.encoder(src)
 
             input_ids = torch.full(
                 (B, 1), bos_token_id,
@@ -392,7 +304,7 @@ class SpikingParrot(nn.Module):
             for _ in range(max_length):
                 current_input = input_ids[:, -1]
                 output = self.decoder(
-                    current_input, encoder_outputs,
+                    current_input,
                     encoder_syns, encoder_mems
                 )
                 next_tokens = torch.argmax(output, dim=-1).unsqueeze(1)
