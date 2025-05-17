@@ -23,6 +23,7 @@ pip install gzip pandas pyarrow jieba transformers tokenizers snntorch tqdm
 ### 准备数据
 
 https://huggingface.co/datasets/wmt/wmt19
+
 下载zh-en数据集文件:
 `train-00000-of-00013.parquet` - `train-00012-of-00013.parquet`
 `validation-00000-of-00001.parquet`
