@@ -1,0 +1,1846 @@
+{
+  "num_cuts": 20,
+  "valid_buckets": [
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 0,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 1,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 2,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 3,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 4,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 5,
+      "num_shards": 6,
+      "suggested_batch_size": 10290,
+      "num_samples": 203563
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 9179,
+      "num_samples": 340378
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        2,
+        6
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 8192,
+      "num_samples": 60712
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 7829,
+      "num_samples": 246093
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 0,
+      "num_shards": 3,
+      "suggested_batch_size": 7168,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 1,
+      "num_shards": 3,
+      "suggested_batch_size": 7168,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 2,
+      "num_shards": 3,
+      "suggested_batch_size": 7168,
+      "num_samples": 349480
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 6420,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 6420,
+      "num_samples": 205922
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        6,
+        9
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 5855,
+      "num_samples": 125173
+    },
+    {
+      "src_range": [
+        3,
+        7
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 6149,
+      "num_samples": 40896
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 5734,
+      "num_samples": 381643
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 3,
+      "suggested_batch_size": 5263,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 1,
+      "num_shards": 3,
+      "suggested_batch_size": 5263,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 2,
+      "num_shards": 3,
+      "suggested_batch_size": 5263,
+      "num_samples": 301534
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 5043,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 5043,
+      "num_samples": 298824
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 4608,
+      "num_samples": 196251
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        9,
+        12
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 4363,
+      "num_samples": 50917
+    },
+    {
+      "src_range": [
+        7,
+        10
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 4875,
+      "num_samples": 72695
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 4576,
+      "num_samples": 375924
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 3,
+      "suggested_batch_size": 4240,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 1,
+      "num_shards": 3,
+      "suggested_batch_size": 4240,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 2,
+      "num_shards": 3,
+      "suggested_batch_size": 4240,
+      "num_samples": 245160
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 4096,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 4096,
+      "num_samples": 334015
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3840,
+      "num_samples": 262724
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        12,
+        15
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3603,
+      "num_samples": 83908
+    },
+    {
+      "src_range": [
+        10,
+        13
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 4056,
+      "num_samples": 78134
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3748,
+      "num_samples": 363728
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 3,
+      "suggested_batch_size": 3584,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 1,
+      "num_shards": 3,
+      "suggested_batch_size": 3584,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 2,
+      "num_shards": 3,
+      "suggested_batch_size": 3584,
+      "num_samples": 158791
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 3405,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 3405,
+      "num_samples": 333461
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3263,
+      "num_samples": 304005
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3073,
+      "num_samples": 116917
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        15,
+        18
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2922,
+      "num_samples": 38784
+    },
+    {
+      "src_range": [
+        13,
+        16
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3411,
+      "num_samples": 95381
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 3191,
+      "num_samples": 330392
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 3072,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 3072,
+      "num_samples": 342321
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 2890,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 2890,
+      "num_samples": 286879
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2864,
+      "num_samples": 323796
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2725,
+      "num_samples": 142503
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        18,
+        21
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2590,
+      "num_samples": 52991
+    },
+    {
+      "src_range": [
+        16,
+        19
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2925,
+      "num_samples": 105371
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2824,
+      "num_samples": 313708
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 2661,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 2661,
+      "num_samples": 239773
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 2560,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 2560,
+      "num_samples": 229969
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2560,
+      "num_samples": 320096
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2411,
+      "num_samples": 153611
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        21,
+        24
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2309,
+      "num_samples": 74537
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2560,
+      "num_samples": 112513
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2532,
+      "num_samples": 265260
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 2418,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 2418,
+      "num_samples": 153848
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 2,
+      "suggested_batch_size": 2336,
+      "num_samples": 262144
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 1,
+      "num_shards": 2,
+      "suggested_batch_size": 2336,
+      "num_samples": 162349
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2274,
+      "num_samples": 294639
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2196,
+      "num_samples": 184325
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        24,
+        27
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2096,
+      "num_samples": 62132
+    },
+    {
+      "src_range": [
+        19,
+        22
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2408,
+      "num_samples": 36826
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2322,
+      "num_samples": 103902
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2274,
+      "num_samples": 224578
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2224,
+      "num_samples": 344236
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2121,
+      "num_samples": 353912
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2048,
+      "num_samples": 319859
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1984,
+      "num_samples": 140480
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        27,
+        30
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1876,
+      "num_samples": 51709
+    },
+    {
+      "src_range": [
+        22,
+        25
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2178,
+      "num_samples": 36371
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2082,
+      "num_samples": 93056
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2048,
+      "num_samples": 187649
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 2007,
+      "num_samples": 274758
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1897,
+      "num_samples": 368934
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1859,
+      "num_samples": 240236
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1801,
+      "num_samples": 108486
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        30,
+        33
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1703,
+      "num_samples": 45152
+    },
+    {
+      "src_range": [
+        25,
+        28
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1981,
+      "num_samples": 34732
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1912,
+      "num_samples": 80245
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1861,
+      "num_samples": 153742
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1832,
+      "num_samples": 294532
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1739,
+      "num_samples": 284588
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1706,
+      "num_samples": 178019
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        33,
+        36
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1635,
+      "num_samples": 92992
+    },
+    {
+      "src_range": [
+        28,
+        31
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1792,
+      "num_samples": 37615
+    },
+    {
+      "src_range": [
+        31,
+        34
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1720,
+      "num_samples": 81139
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1706,
+      "num_samples": 207002
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1631,
+      "num_samples": 300853
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1576,
+      "num_samples": 285080
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1568,
+      "num_samples": 215477
+    },
+    {
+      "src_range": [
+        51,
+        57
+      ],
+      "tgt_range": [
+        36,
+        40
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1462,
+      "num_samples": 93366
+    },
+    {
+      "src_range": [
+        34,
+        38
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1574,
+      "num_samples": 71380
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1538,
+      "num_samples": 147421
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1475,
+      "num_samples": 215979
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1459,
+      "num_samples": 260457
+    },
+    {
+      "src_range": [
+        51,
+        57
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1358,
+      "num_samples": 171544
+    },
+    {
+      "src_range": [
+        57,
+        64
+      ],
+      "tgt_range": [
+        40,
+        44
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1318,
+      "num_samples": 62525
+    },
+    {
+      "src_range": [
+        38,
+        42
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1424,
+      "num_samples": 60061
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1323,
+      "num_samples": 122161
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1350,
+      "num_samples": 231107
+    },
+    {
+      "src_range": [
+        51,
+        57
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1281,
+      "num_samples": 260571
+    },
+    {
+      "src_range": [
+        57,
+        64
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1199,
+      "num_samples": 146568
+    },
+    {
+      "src_range": [
+        64,
+        73
+      ],
+      "tgt_range": [
+        44,
+        49
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1197,
+      "num_samples": 47280
+    },
+    {
+      "src_range": [
+        42,
+        46
+      ],
+      "tgt_range": [
+        49,
+        55
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1280,
+      "num_samples": 37630
+    },
+    {
+      "src_range": [
+        46,
+        51
+      ],
+      "tgt_range": [
+        49,
+        55
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1223,
+      "num_samples": 104480
+    },
+    {
+      "src_range": [
+        51,
+        57
+      ],
+      "tgt_range": [
+        49,
+        55
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1204,
+      "num_samples": 209505
+    },
+    {
+      "src_range": [
+        57,
+        64
+      ],
+      "tgt_range": [
+        49,
+        55
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1112,
+      "num_samples": 219416
+    },
+    {
+      "src_range": [
+        64,
+        73
+      ],
+      "tgt_range": [
+        49,
+        55
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1055,
+      "num_samples": 120140
+    },
+    {
+      "src_range": [
+        51,
+        57
+      ],
+      "tgt_range": [
+        55,
+        62
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1096,
+      "num_samples": 79331
+    },
+    {
+      "src_range": [
+        57,
+        64
+      ],
+      "tgt_range": [
+        55,
+        62
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1075,
+      "num_samples": 164553
+    },
+    {
+      "src_range": [
+        64,
+        73
+      ],
+      "tgt_range": [
+        55,
+        62
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 1024,
+      "num_samples": 183494
+    },
+    {
+      "src_range": [
+        73,
+        85
+      ],
+      "tgt_range": [
+        55,
+        62
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 923,
+      "num_samples": 81554
+    },
+    {
+      "src_range": [
+        57,
+        64
+      ],
+      "tgt_range": [
+        62,
+        71
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 930,
+      "num_samples": 55379
+    },
+    {
+      "src_range": [
+        64,
+        73
+      ],
+      "tgt_range": [
+        62,
+        71
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 928,
+      "num_samples": 138294
+    },
+    {
+      "src_range": [
+        73,
+        85
+      ],
+      "tgt_range": [
+        62,
+        71
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 861,
+      "num_samples": 150243
+    },
+    {
+      "src_range": [
+        85,
+        102
+      ],
+      "tgt_range": [
+        62,
+        71
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 787,
+      "num_samples": 47918
+    },
+    {
+      "src_range": [
+        64,
+        73
+      ],
+      "tgt_range": [
+        71,
+        82
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 787,
+      "num_samples": 35458
+    },
+    {
+      "src_range": [
+        73,
+        85
+      ],
+      "tgt_range": [
+        71,
+        82
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 786,
+      "num_samples": 102402
+    },
+    {
+      "src_range": [
+        85,
+        102
+      ],
+      "tgt_range": [
+        71,
+        82
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 697,
+      "num_samples": 99900
+    },
+    {
+      "src_range": [
+        85,
+        102
+      ],
+      "tgt_range": [
+        82,
+        99
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 652,
+      "num_samples": 84894
+    },
+    {
+      "src_range": [
+        102,
+        129
+      ],
+      "tgt_range": [
+        82,
+        99
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 603,
+      "num_samples": 65260
+    },
+    {
+      "src_range": [
+        102,
+        129
+      ],
+      "tgt_range": [
+        99,
+        128
+      ],
+      "shard_idx": 0,
+      "num_shards": 1,
+      "suggested_batch_size": 479,
+      "num_samples": 57765
+    }
+  ],
+  "min_samples": 32768,
+  "max_samples": 262144,
+  "total_samples": 24949534,
+  "total_original_samples": 25872309,
+  "discarded_samples": 922775,
+  "total_padding": 73671652,
+  "total_actual_tokens": 1292478969
+}

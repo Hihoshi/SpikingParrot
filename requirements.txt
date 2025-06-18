@@ -1,0 +1,9 @@
+jieba==0.42.1
+numpy==2.3.0
+pandas==2.3.0
+sacrebleu==2.5.1
+snntorch==0.9.4
+torch==2.5.1+cu124
+tqdm==4.66.2
+transformers==4.52.3
+zstandard==0.22.0

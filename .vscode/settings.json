@@ -1,0 +1,6 @@
+{
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "ruff.lint.ignore": ["E501", "E502", "W293", "W391", "Q", "ANN", "D", "ERA", "PLR"],
+    "ruff.lint.select": ["E", "W", "F"]
+}
